@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node nodemon",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "seed:admin": "node Scripts/seedAdmin.js"
   },
   "keywords": [],
   "author": "",

@@ -13,4 +13,5 @@ export const ENV = {
   STORAGE_SECRET_KEY: process.env.STORAGE_SECRET_KEY,
   STORAGE_BUCKET: process.env.STORAGE_BUCKET,
   STORAGE_PUBLIC_URL: process.env.STORAGE_PUBLIC_URL,
+  SERVER_URL: process.env.SERVER_URL || 'http://localhost:5000',
 };
