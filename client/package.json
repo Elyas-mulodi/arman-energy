@@ -1,0 +1,35 @@
+{
+  "name": "client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@fontsource/vazirmatn": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/js-cookie": "^3.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "axios": "^1.19.0",
+    "framer-motion": "^13.1.0",
+    "install": "^0.13.0",
+    "js-cookie": "^3.0.8",
+    "lucide-react": "^1.31.0",
+    "npm": "^11.19.0",
+    "react-hot-toast": "^2.6.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "zustand": "^5.0.15"
+  }
+}
