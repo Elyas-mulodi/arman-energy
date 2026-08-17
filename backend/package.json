@@ -4,8 +4,8 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "start": "node nodemon",
-    "dev": "node server.js",
+    "start": "node server.js",
+    "dev": "node nodemon",
     "seed:admin": "node Scripts/seedAdmin.js"
   },
   "keywords": [],
