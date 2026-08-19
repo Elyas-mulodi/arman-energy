@@ -7,7 +7,7 @@ import {
   getAllOrders,
   updateOrderStatus,
 } from './OrderCn.js';
-import { verifyToken, isAdmin } from '../../Middlewares/authMidd.js';
+import { verifyToken, isAdmin } from '../../Middleware/authMidd.js';
 
 const router = express.Router();
 

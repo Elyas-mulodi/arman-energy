@@ -4,9 +4,11 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node nodemon",
-    "seed:admin": "node Scripts/seedAdmin.js"
+    "start": "node nodemon",
+    "dev": "node server.js",
+    "seed:admin": "node Scripts/seedAdmin.js",
+        "seed:data": "node scripts/seedData.js"
+
   },
   "keywords": [],
   "author": "",

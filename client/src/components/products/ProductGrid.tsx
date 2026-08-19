@@ -1,5 +1,5 @@
 import { Product } from '@/types/product';
-import ProductCard from './ProductCard';
+import ProductCard from '../site/ProductCard';
 
 export default function ProductGrid({ products }: { products: Product[] }) {
   if (products.length === 0) {

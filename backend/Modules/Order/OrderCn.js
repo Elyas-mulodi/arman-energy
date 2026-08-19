@@ -2,7 +2,7 @@ import Order from './OrderMd.js';
 import Cart from '../Cart/CartMd.js';
 import Product from '../Product/ProductMd.js';
 import { generateOrderNumber } from '../../Utils/generateOrderNumber.js';
-import { requestPayment, verifyPayment } from '../Payment/zarinpalService.js';
+import { requestPayment, verifyPayment } from '../Peyment/zarinpalService.js';
 import { ENV } from '../../Config/env.js';
 
 export const createOrder = async (req, res) => {
