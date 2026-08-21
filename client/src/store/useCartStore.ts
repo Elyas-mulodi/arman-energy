@@ -7,6 +7,7 @@ interface CartState {
   subtotal: number;
   itemCount: number;
   isLoading: boolean;
+  isInitialized: boolean;
 
   fetchCart: () => Promise<void>;
   addToCart: (productId: string, variantId: string, quantity?: number) => Promise<void>;
@@ -15,35 +16,44 @@ interface CartState {
   clearCart: () => Promise<void>;
 }
 
+const applyCart = (data: Cart) => ({
+  items: data.items,
+  subtotal: data.subtotal,
+  itemCount: data.itemCount,
+});
+
 export const useCartStore = create<CartState>((set) => ({
   items: [],
   subtotal: 0,
   itemCount: 0,
   isLoading: false,
+  isInitialized: false,
 
   fetchCart: async () => {
     set({ isLoading: true });
     try {
-      const { data } = await api.get<Cart>('/cart');
-      set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount, isLoading: false });
+      const { data } = await api.get<Cart>('/cart', {
+        headers: { 'x-skip-auth-redirect': 'true' },
+      });
+      set({ ...applyCart(data), isLoading: false, isInitialized: true });
     } catch {
-      set({ isLoading: false });
+      set({ isLoading: false, isInitialized: true });
     }
   },
 
   addToCart: async (productId, variantId, quantity = 1) => {
     const { data } = await api.post<Cart>('/cart', { productId, variantId, quantity });
-    set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+    set(applyCart(data));
   },
 
   updateQuantity: async (itemId, quantity) => {
     const { data } = await api.put<Cart>(`/cart/${itemId}`, { quantity });
-    set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+    set(applyCart(data));
   },
 
   removeItem: async (itemId) => {
     const { data } = await api.delete<Cart>(`/cart/${itemId}`);
-    set({ items: data.items, subtotal: data.subtotal, itemCount: data.itemCount });
+    set(applyCart(data));
   },
 
   clearCart: async () => {

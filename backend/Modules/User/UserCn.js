@@ -8,21 +8,34 @@ export const registerUser = async (req, res) => {
     const { fullName, phone, email, password } = req.body;
 
     if (!fullName || !phone || !password) {
-      return res
-        .status(400)
-        .json({ message: "لطفا تمام فیلدهای الزامی را پر کنید" });
+      return res.status(400).json({ message: "لطفا تمام فیلدها را پر کنید" });
     }
+    console.log("1 - request received");
 
     const userExists = await User.findOne({ phone });
+
+    console.log("2 - user checked");
+
     if (userExists) {
-      return res
-        .status(400)
-        .json({ message: "کاربری با این شماره موبایل قبلا ثبت شده است" });
+      return res.status(400).json({
+        message: "کاربری با این شماره موبایل قبلا ثبت شده است",
+      });
     }
 
-    const user = await User.create({ fullName, phone, email, password });
+    console.log("3 - creating user");
+
+    const user = await User.create({
+      fullName,
+      phone,
+      email,
+      password,
+    });
+
+    console.log("4 - user created");
 
     generateToken(res, user._id, user.role);
+
+    console.log("5 - token generated");
 
     res.status(201).json({
       _id: user._id,
@@ -31,9 +44,12 @@ export const registerUser = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "خطا در ثبت‌نام کاربر", error: error.message });
+    console.error("REGISTER ERROR:", error);
+
+    res.status(500).json({
+      message: "خطا در ثبت‌نام کاربر",
+      error: error.message,
+    });
   }
 };
 

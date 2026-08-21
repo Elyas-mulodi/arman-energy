@@ -1,30 +1,36 @@
-export interface CartItemVariant {
+interface CartItemBase {
   _id: string;
-  voltage?: string;
-  size?: string;
-  brand?: string;
-  price: number;
-  discountPrice?: number | null;
-  stock: number;
 }
 
-export interface CartItemProduct {
-  _id: string;
-  name: string;
-  slug: string;
-  image: string | null;
+export interface UnavailableCartItem extends CartItemBase {
+  available: false;
+  message: string;
+  product?: { name: string; slug: string };
 }
 
-export interface CartItem {
-  _id: string;
-  product?: CartItemProduct;
-  variant?: CartItemVariant;
+export interface AvailableCartItem extends CartItemBase {
+  available: true;
+  product: {
+    _id: string;
+    name: string;
+    slug: string;
+    image: string | null;
+  };
+  variant: {
+    _id: string;
+    voltage?: string;
+    size?: string;
+    brand?: string;
+    price: number;
+    discountPrice?: number | null;
+    stock: number;
+  };
   quantity: number;
-  lineTotal?: number;
-  available: boolean;
-  message?: string;
-  stockWarning?: string | null;
+  lineTotal: number;
+  stockWarning: string | null;
 }
+
+export type CartItem = AvailableCartItem | UnavailableCartItem;
 
 export interface Cart {
   _id: string;
