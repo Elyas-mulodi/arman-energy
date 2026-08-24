@@ -13,7 +13,7 @@ export interface ShippingAddress {
   province: string;
   city: string;
   fullAddress: string;
-  postalCode?: string;
+  postalCode: string;
 }
 
 export interface OrderItem {
@@ -44,4 +44,9 @@ export interface Order {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateOrderResponse {
+  paymentUrl: string;
+  orderNumber: string;
 }
