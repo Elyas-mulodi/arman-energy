@@ -8,6 +8,7 @@ import {
   deleteProductImage,
   deleteProduct,
   getProductById,
+  getProductByIdAdmin,
 } from './ProductCn.js';
 import { verifyToken, isAdmin } from '../../Middleware/authMidd.js';
 import { uploadProductImages } from '../../Middleware/uploadMidd.js';
@@ -17,7 +18,7 @@ const router = express.Router();
 router.get('/', getProducts);
 router.get('/admin', verifyToken, isAdmin, getProductsAdmin);
 router.get('/:slug', getProductBySlug);
-router.get('/admin/:id', verifyToken, isAdmin, getProductById);
+router.get('/admin/:id', verifyToken, isAdmin, getProductByIdAdmin);
 
 router.post('/', verifyToken, isAdmin, uploadProductImages.array('images', 6), createProduct);
 router.put('/:id', verifyToken, isAdmin, uploadProductImages.array('images', 6), updateProduct);

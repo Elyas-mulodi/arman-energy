@@ -270,3 +270,20 @@ export const getProductById = async (req, res) => {
       .json({ message: "خطا در دریافت محصول", error: error.message });
   }
 };
+
+export const getProductByIdAdmin = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).populate('category', 'name slug');
+
+    if (!product) {
+      return res.status(404).json({ message: 'محصول یافت نشد' });
+    }
+
+    res.status(200).json(product);
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'شناسه محصول نامعتبر است' });
+    }
+    res.status(500).json({ message: 'خطا در دریافت محصول', error: error.message });
+  }
+};

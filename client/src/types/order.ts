@@ -50,3 +50,18 @@ export interface CreateOrderResponse {
   paymentUrl: string;
   orderNumber: string;
 }
+
+export interface OrderUserInfo {
+  _id: string;
+  fullName: string;
+  phone: string;
+}
+
+export interface OrderListResponse {
+  orders: Order[];
+  pagination: {
+    total: number;
+    page: number;
+    pages: number;
+  };
+}

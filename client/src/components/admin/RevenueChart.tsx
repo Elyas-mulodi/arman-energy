@@ -13,7 +13,6 @@ import { RevenueChartPoint } from '@/types/dashboard';
 import { formatPrice } from '@/lib/utils';
 
 export default function RevenueChart({ data }: { data: RevenueChartPoint[] }) {
-  // تاریخ ISO رو به فرمت کوتاه‌تر برای محور X تبدیل می‌کنیم
   const formattedData = data.map((point) => ({
     ...point,
     label: new Date(point._id).toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' }),
@@ -29,7 +28,7 @@ export default function RevenueChart({ data }: { data: RevenueChartPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={formattedData}>
+      <AreaChart data={formattedData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
         <defs>
           <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#0284c7" stopOpacity={0.25} />
@@ -42,11 +41,14 @@ export default function RevenueChart({ data }: { data: RevenueChartPoint[] }) {
           tick={{ fontSize: 11, fill: '#94a3b8' }}
           axisLine={false}
           tickLine={false}
+          interval="preserveStartEnd"
+          minTickGap={28}
         />
         <YAxis
           tick={{ fontSize: 11, fill: '#94a3b8' }}
           axisLine={false}
           tickLine={false}
+          width={38}
           tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
         />
         <Tooltip

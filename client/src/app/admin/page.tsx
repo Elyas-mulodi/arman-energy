@@ -18,7 +18,6 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        // هر سه درخواست رو همزمان بفرست، نه پشت‌سرهم - سرعت لود بیشتر
         const [overviewRes, bestSellersRes, revenueRes] = await Promise.all([
           api.get<DashboardOverview>('/dashboard/overview'),
           api.get<BestSeller[]>('/dashboard/best-sellers', { params: { limit: 5 } }),
@@ -29,7 +28,6 @@ export default function AdminDashboardPage() {
         setBestSellers(bestSellersRes.data);
         setRevenueData(revenueRes.data);
       } catch {
-        // خطا بی‌صدا مدیریت میشه، UI خودش حالت خالی رو نشون میده
       } finally {
         setIsLoading(false);
       }
@@ -40,9 +38,9 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 animate-pulse rounded-xl bg-ink-800/5" />
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-ink-800/5 sm:h-28" />
         ))}
       </div>
     );
@@ -58,9 +56,10 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-black text-ink-900">داشبورد</h1>
+      <h1 className="mb-5 text-xl font-black text-ink-900 sm:mb-6 sm:text-2xl">داشبورد</h1>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* کارت‌های آماری: ۲ ستون رو موبایل، ۴ ستون از lg */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <StatCard
             icon={Wallet}
@@ -103,30 +102,31 @@ export default function AdminDashboardPage() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* نمودار درآمد */}
+      {/* نمودار + هشدار موجودی: از md دوستونی میشه، نه فقط lg */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-xl border border-ink-800/10 bg-white p-5 lg:col-span-2"
+          className="min-w-0 rounded-xl border border-ink-800/10 bg-white p-4 sm:p-5 md:col-span-2"
         >
           <div className="mb-4 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-brand-500" />
+            <TrendingUp className="h-4 w-4 shrink-0 text-brand-500" />
             <h2 className="text-sm font-bold text-ink-900">روند درآمد (۱۴ روز اخیر)</h2>
           </div>
+          {/* توجه: RevenueChart باید داخلش از ResponsiveContainer recharts استفاده کنه
+              وگرنه رو موبایل باعث اسکرول افقی کل صفحه میشه */}
           <RevenueChart data={revenueData} />
         </motion.div>
 
-        {/* محصولات کم‌موجودی */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="rounded-xl border border-ink-800/10 bg-white p-5"
+          className="rounded-xl border border-ink-800/10 bg-white p-4 sm:p-5"
         >
           <div className="mb-4 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
             <h2 className="text-sm font-bold text-ink-900">هشدار موجودی کم</h2>
           </div>
 
@@ -138,7 +138,7 @@ export default function AdminDashboardPage() {
             <div className="flex flex-col gap-3">
               {overview.lowStockProducts.map((product) => (
                 <div key={product._id} className="border-b border-ink-800/5 pb-3 last:border-0">
-                  <p className="mb-1.5 text-xs font-bold text-ink-900">{product.name}</p>
+                  <p className="mb-1.5 truncate text-xs font-bold text-ink-900">{product.name}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {product.lowVariants.map((variant, i) => (
                       <span
@@ -161,7 +161,7 @@ export default function AdminDashboardPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="mt-6 rounded-xl border border-ink-800/10 bg-white p-5"
+        className="mt-6 rounded-xl border border-ink-800/10 bg-white p-4 sm:p-5"
       >
         <h2 className="mb-4 text-sm font-bold text-ink-900">پرفروش‌ترین محصولات</h2>
 
@@ -172,16 +172,16 @@ export default function AdminDashboardPage() {
             {bestSellers.map((product, index) => (
               <div
                 key={product._id}
-                className="flex items-center justify-between rounded-md px-2 py-2.5 hover:bg-ink-100/50"
+                className="flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-ink-100/50"
               >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink-800/5 text-xs font-bold text-ink-800/50">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink-800/5 text-xs font-bold text-ink-800/50">
                     {index + 1}
                   </span>
-                  <span className="text-sm font-medium text-ink-900">{product.name}</span>
+                  <span className="truncate text-sm font-medium text-ink-900">{product.name}</span>
                 </div>
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="text-ink-800/50">
+                <div className="flex shrink-0 items-center gap-2 text-xs sm:gap-4">
+                  <span className="hidden text-ink-800/50 sm:inline">
                     {product.totalSold.toLocaleString('fa-IR')} فروش
                   </span>
                   <span className="font-bold text-brand-600">
