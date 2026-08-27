@@ -57,9 +57,25 @@ export const loginUser = async (req, res) => {
   try {
     const { phone, password } = req.body;
 
-    const user = await User.findOne({ phone });
+    const cleanPhone = phone?.trim();
 
-    if (!user || !(await user.matchPassword(password))) {
+    console.log("LOGIN ATTEMPT - raw phone:", JSON.stringify(phone));
+    console.log("LOGIN ATTEMPT - cleaned phone:", JSON.stringify(cleanPhone));
+
+    const user = await User.findOne({ phone: cleanPhone });
+
+    console.log("LOGIN ATTEMPT - user found:", !!user);
+
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: "شماره موبایل یا رمز عبور اشتباه است" });
+    }
+
+    const isMatch = await user.matchPassword(password);
+    console.log("LOGIN ATTEMPT - password match:", isMatch);
+
+    if (!isMatch) {
       return res
         .status(401)
         .json({ message: "شماره موبایل یا رمز عبور اشتباه است" });
@@ -80,6 +96,7 @@ export const loginUser = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
+    console.error("LOGIN ERROR:", error);
     res
       .status(500)
       .json({ message: "خطا در ورود کاربر", error: error.message });

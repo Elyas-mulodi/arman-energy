@@ -40,3 +40,20 @@ export interface ProductListResponse {
     pages: number;
   };
 }
+
+export interface VariantFormValue {
+  _id?: string; 
+  voltage: string;
+  size: string;
+  brand: string;
+  sku: string;
+  price: string;
+  discountPrice: string;
+  stock: string;
+  isActive: boolean;
+}
+
+export interface SpecFormValue {
+  key: string;
+  value: string;
+}
