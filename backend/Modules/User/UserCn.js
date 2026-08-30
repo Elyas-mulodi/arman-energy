@@ -2,6 +2,7 @@ import User from "./UserMd.js";
 import generateToken from "../../Utils/generateToken.js";
 import { sendSms } from "../../Utils/sendSms.js";
 import { generateOtp, hashOtp } from "../../Utils/otp.js";
+import { requestLimoOtp, verifyLimoOtp } from '../../Utils/limoOtpService.js';
 
 export const registerUser = async (req, res) => {
   try {
@@ -183,70 +184,60 @@ export const toggleUserStatus = async (req, res) => {
   }
 };
 
+
+// @desc    Request password reset OTP
+// @route   POST /api/users/forgot-password
 export const forgotPassword = async (req, res) => {
   try {
     const { phone } = req.body;
 
     if (!phone) {
-      return res.status(400).json({ message: "شماره موبایل الزامی است" });
+      return res.status(400).json({ message: 'شماره موبایل الزامی است' });
     }
 
     const user = await User.findOne({ phone });
 
     if (!user) {
-      return res
-        .status(200)
-        .json({ message: "در صورت وجود حساب، کد تایید ارسال شد" });
+      // به دلایل امنیتی، پیام یکسان برمی‌گردونیم حتی اگه کاربر وجود نداشته باشه
+      return res.status(200).json({ message: 'در صورت وجود حساب، کد تایید ارسال شد' });
     }
 
-    const otp = generateOtp();
-    user.resetPasswordOtp = hashOtp(otp);
-    user.resetPasswordExpires = Date.now() + 2 * 60 * 1000;
-    await user.save();
+    await requestLimoOtp(phone);
 
-    await sendSms(phone, `کد بازیابی رمز عبور شما: ${otp}`);
-
-    res.status(200).json({ message: "کد تایید ارسال شد" });
+    res.status(200).json({ message: 'کد تایید ارسال شد' });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "خطا در ارسال کد تایید", error: error.message });
+    res.status(500).json({ message: 'خطا در ارسال کد تایید', error: error.message });
   }
 };
 
+// @desc    Reset password with OTP
+// @route   POST /api/users/reset-password
 export const resetPassword = async (req, res) => {
   try {
     const { phone, otp, newPassword } = req.body;
 
     if (!phone || !otp || !newPassword) {
-      return res.status(400).json({ message: "لطفا تمام فیلدها را پر کنید" });
+      return res.status(400).json({ message: 'لطفا تمام فیلدها را پر کنید' });
     }
 
-    const user = await User.findOne({ phone }).select(
-      "+resetPasswordOtp +resetPasswordExpires",
-    );
+    const user = await User.findOne({ phone });
 
-    if (!user || !user.resetPasswordOtp) {
-      return res.status(400).json({ message: "درخواست نامعتبر است" });
+    if (!user) {
+      return res.status(400).json({ message: 'درخواست نامعتبر است' });
     }
 
-    if (user.resetPasswordExpires < Date.now()) {
-      return res.status(400).json({ message: "کد تایید منقضی شده است" });
-    }
+    // کد رو مستقیم از خودِ لیمو تایید می‌کنیم، نه از دیتابیس خودمون
+    const isValid = await verifyLimoOtp(phone, otp);
 
-    if (hashOtp(otp) !== user.resetPasswordOtp) {
-      return res.status(400).json({ message: "کد تایید اشتباه است" });
+    if (!isValid) {
+      return res.status(400).json({ message: 'کد تایید نامعتبر یا منقضی شده است' });
     }
 
     user.password = newPassword;
-    user.resetPasswordOtp = undefined;
-    user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.status(200).json({ message: "رمز عبور با موفقیت تغییر کرد" });
+    res.status(200).json({ message: 'رمز عبور با موفقیت تغییر کرد' });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "خطا در تغییر رمز عبور", error: error.message });
+    res.status(500).json({ message: 'خطا در تغییر رمز عبور', error: error.message });
   }
 };

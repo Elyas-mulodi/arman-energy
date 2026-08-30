@@ -1,8 +1,7 @@
+import Image from 'next/image';
 import { CartItem } from '@/types/cart';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getImageUrl } from '@/lib/utils';
 import { Zap } from 'lucide-react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '');
 
 export default function OrderSummary({ items, subtotal }: { items: CartItem[]; subtotal: number }) {
   const shippingCost = 0;
@@ -23,15 +22,19 @@ export default function OrderSummary({ items, subtotal }: { items: CartItem[]; s
 
           return (
             <div key={item._id} className="flex items-center gap-3">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-ink-100">
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-ink-100">
                 {item.product.image ? (
-                  <img
-                    src={`${API_BASE}${item.product.image}`}
+                  <Image
+                    src={getImageUrl(item.product.image)}
                     alt={item.product.name}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="56px"
+                    className="object-cover"
                   />
                 ) : (
-                  <Zap className="h-5 w-5 text-ink-800/20" />
+                  <div className="flex h-full w-full items-center justify-center">
+                    <Zap className="h-5 w-5 text-ink-800/20" />
+                  </div>
                 )}
               </div>
               <div className="flex-1">

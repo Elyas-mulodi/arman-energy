@@ -52,8 +52,8 @@ export default function ForgotPasswordFlow() {
   const handleResetSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (otp.length !== 5) {
-      toast.error('کد تایید باید ۵ رقم باشد');
+    if (otp.length !== 6) {
+      toast.error('کد تایید باید 6 رقم باشد');
       return;
     }
     if (newPassword.length < 6) {
@@ -140,7 +140,7 @@ export default function ForgotPasswordFlow() {
 
             <h1 className="mb-1 text-2xl font-black text-ink-900">کد تایید را وارد کنید</h1>
             <p className="mb-8 text-sm text-ink-800/50">
-              کد ۵ رقمی ارسال‌شده به <span dir="ltr" className="font-bold">{phone}</span> و رمز
+              کد 6 رقمی ارسال‌شده به <span dir="ltr" className="font-bold">{phone}</span> و رمز
               جدید خود را وارد کنید
             </p>
 
@@ -150,8 +150,8 @@ export default function ForgotPasswordFlow() {
                 label="کد تایید"
                 type="text"
                 inputMode="numeric"
-                maxLength={5}
-                placeholder="۵ رقمی"
+                maxLength={6}
+                placeholder="6 رقمی"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 required

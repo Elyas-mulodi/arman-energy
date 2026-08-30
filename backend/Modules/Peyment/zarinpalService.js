@@ -1,20 +1,34 @@
-import { ENV } from '../../Config/env.js';
+import { ENV } from "../../Config/env.js";
 
-const ZARINPAL_BASE = ENV.ZARINPAL_SANDBOX === 'true'
-  ? 'https://sandbox.zarinpal.com/pg/v4/payment'
-  : 'https://payment.zarinpal.com/pg/v4/payment';
+const ZARINPAL_BASE =
+  ENV.ZARINPAL_SANDBOX === "true"
+    ? "https://sandbox.zarinpal.com/pg/v4/payment"
+    : "https://payment.zarinpal.com/pg/v4/payment";
 
-const ZARINPAL_GATEWAY = ENV.ZARINPAL_SANDBOX === 'true'
-  ? 'https://sandbox.zarinpal.com/pg/StartPay'
-  : 'https://payment.zarinpal.com/pg/StartPay';
+const ZARINPAL_GATEWAY =
+  ENV.ZARINPAL_SANDBOX === "true"
+    ? "https://sandbox.zarinpal.com/pg/StartPay"
+    : "https://payment.zarinpal.com/pg/StartPay";
 
-export const requestPayment = async ({ amount, description, callbackUrl, mobile }) => {
+export const requestPayment = async ({
+  amount,
+  description,
+  callbackUrl,
+  mobile,
+}) => {
+  console.log(
+    "SANDBOX raw value:",
+    JSON.stringify(ENV.ZARINPAL_SANDBOX),
+    typeof ENV.ZARINPAL_SANDBOX,
+  );
+  console.log("Using endpoint:", ZARINPAL_BASE);
+  console.log("MERCHANT_ID:", JSON.stringify(ENV.ZARINPAL_MERCHANT_ID));
   const response = await fetch(`${ZARINPAL_BASE}/request.json`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       merchant_id: ENV.ZARINPAL_MERCHANT_ID,
-      amount, 
+      amount,
       description,
       callback_url: callbackUrl,
       metadata: mobile ? { mobile } : undefined,
@@ -23,8 +37,10 @@ export const requestPayment = async ({ amount, description, callbackUrl, mobile 
 
   const data = await response.json();
 
+  console.log("ZARINPAL RAW RESPONSE:", JSON.stringify(data));
+
   if (data.data?.code !== 100) {
-    throw new Error(data.errors?.message || 'خطا در اتصال به درگاه پرداخت');
+    throw new Error(data.errors?.message || "خطا در اتصال به درگاه پرداخت");
   }
 
   return {
@@ -35,8 +51,8 @@ export const requestPayment = async ({ amount, description, callbackUrl, mobile 
 
 export const verifyPayment = async ({ amount, authority }) => {
   const response = await fetch(`${ZARINPAL_BASE}/verify.json`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       merchant_id: ENV.ZARINPAL_MERCHANT_ID,
       amount,

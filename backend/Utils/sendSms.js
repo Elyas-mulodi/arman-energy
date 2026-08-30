@@ -1,24 +1,34 @@
 import { ENV } from '../config/env.js';
 
 export const sendSms = async (phone, message) => {
+  if (!ENV.LIMOSMS_API_KEY) {
+    console.log('\n📱 ------- SMS شبیه‌سازی‌شده (حالت توسعه) -------');
+    console.log(`گیرنده: ${phone}`);
+    console.log(`متن: ${message}`);
+    console.log('----------------------------------------------\n');
+    return true;
+  }
+
   try {
-    const response = await fetch(
-      `https://api.kavenegar.com/v1/${ENV.KAVENEGAR_API_KEY}/sms/send.json`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          receptor: phone,
-          message,
-          sender: ENV.KAVENEGAR_SENDER,
-        }),
-      }
-    );
+    const response = await fetch('https://api.limosms.com/api/sendsms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ApiKey: ENV.LIMOSMS_API_KEY,
+      },
+      body: JSON.stringify({
+        SenderNumber: ENV.LIMOSMS_SENDER,
+        Message: message,
+        MobileNumber: [phone],
+        SendToBlocksNumber: false,
+      }),
+    });
 
     const data = await response.json();
 
-    if (data.return?.status !== 200) {
-      throw new Error('ارسال پیامک ناموفق بود');
+    if (!data.Success) {
+      console.error('LimoSMS error response:', data);
+      throw new Error(data.Message || 'ارسال پیامک ناموفق بود');
     }
 
     return true;

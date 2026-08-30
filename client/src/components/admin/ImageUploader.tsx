@@ -1,14 +1,14 @@
 'use client';
 
 import { useRef } from 'react';
+import Image from 'next/image';
 import { ImagePlus, X } from 'lucide-react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '');
+import { getImageUrl } from '@/lib/utils';
 
 interface ImageUploaderProps {
-  existingImages: string[]; // عکس‌هایی که از قبل ذخیره شدن (فقط تو حالت ویرایش)
+  existingImages: string[];
   onRemoveExisting: (url: string) => void;
-  newFiles: File[]; // عکس‌های جدیدی که کاربر انتخاب کرده ولی هنوز آپلود نشدن
+  newFiles: File[];
   onNewFilesChange: (files: File[]) => void;
 }
 
@@ -23,7 +23,7 @@ export default function ImageUploader({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
     onNewFilesChange([...newFiles, ...selected]);
-    e.target.value = ''; // برای اینکه انتخاب همون فایل دوباره هم trigger بشه
+    e.target.value = '';
   };
 
   const removeNewFile = (index: number) => {
@@ -37,11 +37,11 @@ export default function ImageUploader({
       <div className="flex flex-wrap gap-3">
         {existingImages.map((img) => (
           <div key={img} className="group relative h-20 w-20 overflow-hidden rounded-md border border-ink-800/10">
-            <img src={`${API_BASE}${img}`} alt="" className="h-full w-full object-cover" />
+            <Image src={getImageUrl(img)} alt="" fill sizes="80px" className="object-cover" />
             <button
               type="button"
               onClick={() => onRemoveExisting(img)}
-              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100"
+              className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100"
             >
               <X className="h-5 w-5 text-white" />
             </button>
@@ -49,8 +49,11 @@ export default function ImageUploader({
         ))}
 
         {newFiles.map((file, index) => {
+          // برای فایل‌های محلی (هنوز آپلود نشده)، next/image امکان استفاده از object URL رو نداره
+          // (چون این یه blob موقته، نه یه مسیر واقعی رو دیسک/CDN) - پس اینجا از img خام استفاده می‌کنیم، عمداً
           const previewUrl = URL.createObjectURL(file);
           return (
+            // eslint-disable-next-line @next/next/no-img-element
             <div key={index} className="group relative h-20 w-20 overflow-hidden rounded-md border-2 border-brand-500/40">
               <img src={previewUrl} alt="" className="h-full w-full object-cover" />
               <button

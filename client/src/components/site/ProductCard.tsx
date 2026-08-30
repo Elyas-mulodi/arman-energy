@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Zap } from 'lucide-react';
 import { Product } from '@/types/product';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getImageUrl } from '@/lib/utils';
 
 export default function ProductCard({ product }: { product: Product }) {
   const firstVariant = product.variants[0];
@@ -15,10 +16,12 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       <div className="relative aspect-square overflow-hidden bg-ink-100">
         {product.images[0] ? (
-          <img
-            src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${product.images[0]}`}
+          <Image
+            src={getImageUrl(product.images[0])}
             alt={product.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-gradient-to-br from-ink-900 to-ink-800">
@@ -36,7 +39,7 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
         )}
         {hasDiscount && (
-          <span className="absolute right-2 top-2 rounded-md bg-accent-500 px-2 py-1 text-[10px] font-bold text-white">
+          <span className="absolute right-2 top-2 z-10 rounded-md bg-accent-500 px-2 py-1 text-[10px] font-bold text-white">
             تخفیف
           </span>
         )}
