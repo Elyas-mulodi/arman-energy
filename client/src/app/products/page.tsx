@@ -74,6 +74,7 @@ function ProductsPageContent() {
         if (selectedCategory) params.set('category', selectedCategory);
         if (currentPage > 1) params.set('page', String(currentPage));
         window.history.replaceState(null, '', `/products?${params.toString()}`);
+        
       } catch (error) {
         if (axios.isCancel(error)) return;
         setStatus('error');

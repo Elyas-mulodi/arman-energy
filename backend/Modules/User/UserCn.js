@@ -23,7 +23,6 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    console.log("3 - creating user");
 
     const user = await User.create({
       fullName,
@@ -32,11 +31,9 @@ export const registerUser = async (req, res) => {
       password,
     });
 
-    console.log("4 - user created");
 
     generateToken(res, user._id, user.role);
 
-    console.log("5 - token generated");
 
     res.status(201).json({
       _id: user._id,

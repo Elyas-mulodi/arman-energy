@@ -27,9 +27,9 @@ export default function AboutProcess() {
           <h2 className="text-2xl font-black text-ink-900 md:text-3xl">
             از انتخاب تا تحویل، چهار قدم ساده
           </h2>
-        </motion.div>
+        </motion.div> 
 
-        <div className="relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative grid grid-cols-2 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* خط اتصال بین مراحل - فقط دسکتاپ */}
           <div className="absolute right-0 top-6 hidden h-px w-full bg-ink-800/10 lg:block" />
 

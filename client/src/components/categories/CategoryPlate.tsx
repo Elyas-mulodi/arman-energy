@@ -23,7 +23,7 @@ export default function CategoryPlate({
       <div className="absolute right-3 top-3 z-10"><Rivet /></div>
       <div className="absolute left-3 top-3 z-10"><Rivet /></div>
 
-      <Link href={`/products?category=${category.slug}`} className="block">
+      <Link href={`/products?category=${category._id}`} className="block">
         {/* تصویر */}
         <div className="relative aspect-[4/3] overflow-hidden bg-ink-800">
           {category.image ? (

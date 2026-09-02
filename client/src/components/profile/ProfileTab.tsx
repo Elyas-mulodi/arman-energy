@@ -19,7 +19,7 @@ export default function ProfileTabs({ active }: { active: string }) {
   const setTab = (id: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', id);
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   return (

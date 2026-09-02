@@ -58,6 +58,8 @@ export const createProduct = async (req, res) => {
     });
 
     res.status(201).json(product);
+    console.log('FILES:', req.files);
+console.log('BODY:', req.body);
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ message: "کد SKU وارد شده تکراری است" });

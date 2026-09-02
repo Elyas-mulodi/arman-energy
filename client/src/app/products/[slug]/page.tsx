@@ -39,12 +39,13 @@ export default async function ProductPage({ params }: Props) {
 
   if (!product) notFound();
 
+  
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Breadcrumb
         items={[
           { label: 'محصولات', href: '/products' },
-          { label: product.category.name, href: `/products?category=${product.category.slug}` },
+          { label: product.category._id, href: `/products?category=${product.category.slug}` },
           { label: product.name },
         ]}
       />
