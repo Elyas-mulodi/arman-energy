@@ -4,5 +4,10 @@ export const formatPrice = (price: number): string => {
 
 export const getImageUrl = (path: string): string => {
   const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
-  return `${base}${path}`;
+  const url = `${base}${path}`;
+
+  console.log('IMAGE PATH:', path);
+  console.log('IMAGE URL:', url);
+
+  return url;
 };
