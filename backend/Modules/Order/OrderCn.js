@@ -4,7 +4,8 @@ import Product from '../Product/ProductMd.js';
 import { generateOrderNumber } from '../../Utils/generateOrderNumber.js';
 import { requestPayment, verifyPayment } from '../Peyment/zarinpalService.js';
 import { ENV } from '../../Config/env.js';
-
+import mongoose from 'mongoose';
+import { ALL_STATUSES, ORDER_TRANSITIONS, STOCK_RESERVED_STATUSES } from '../../Utils/orderStatus.js';
 export const createOrder = async (req, res) => {
   try {
     const { shippingAddress } = req.body;
@@ -194,37 +195,56 @@ export const getOrderByNumber = async (req, res) => {
 
 export const getAllOrders = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
+    const { status, search } = req.query;
+    const pageNum = Math.max(Number(req.query.page) || 1, 1);
+    const limitNum = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
 
-    const skip = (Number(page) - 1) * Number(limit);
+    const filter = {};
+
+    if (status) {
+      if (!ALL_STATUSES.includes(status)) {
+        return res.status(400).json({ message: 'وضعیت نامعتبر است' });
+      }
+      filter.status = status;
+    }
+
+    if (search && search.trim()) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.$or = [
+        { orderNumber: { $regex: escaped, $options: 'i' } },
+        { 'shippingAddress.phone': { $regex: escaped } },
+        { 'shippingAddress.fullName': { $regex: escaped, $options: 'i' } },
+      ];
+    }
 
     const [orders, total] = await Promise.all([
       Order.find(filter)
         .populate('user', 'fullName phone')
         .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum),
       Order.countDocuments(filter),
     ]);
 
     res.status(200).json({
       orders,
-      pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)) },
+      pagination: { total, page: pageNum, pages: Math.ceil(total / limitNum) },
     });
   } catch (error) {
     res.status(500).json({ message: 'خطا در دریافت سفارشات', error: error.message });
   }
 };
 
+
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const allowedTransitions = ['processing', 'shipped', 'delivered', 'cancelled'];
 
-    if (!allowedTransitions.includes(status)) {
+    if (!ALL_STATUSES.includes(status)) {
       return res.status(400).json({ message: 'وضعیت نامعتبر است' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'شناسه سفارش نامعتبر است' });
     }
 
     const order = await Order.findById(req.params.id);
@@ -232,14 +252,28 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'سفارش یافت نشد' });
     }
 
-    if (order.status !== 'paid' && !['shipped', 'delivered'].includes(order.status)) {
-      if (order.status === 'pending_payment' || order.status === 'failed') {
-        return res.status(400).json({ message: 'سفارش پرداخت نشده است' });
-      }
+    const allowedNext = ORDER_TRANSITIONS[order.status] || [];
+    if (!allowedNext.includes(status)) {
+      return res.status(400).json({ message: 'این تغییر وضعیت برای سفارش مجاز نیست' });
     }
 
-    if (status === 'cancelled' && order.status === 'paid') {
-      for (const item of order.items) {
+    // شرط status در کوئری: اگر همزمان کس دیگری وضعیت را عوض کرده باشد، تغییر دوباره اعمال نمی‌شود
+    // (و در نتیجه موجودی هم دوبار برنمی‌گردد)
+    const updated = await Order.findOneAndUpdate(
+      { _id: order._id, status: order.status },
+      { $set: { status } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res
+        .status(409)
+        .json({ message: 'وضعیت سفارش همزمان تغییر کرد. صفحه را رفرش کنید' });
+    }
+
+    // لغو سفارشی که موجودی‌اش کم شده بود (paid یا processing): موجودی برگردد
+    if (status === 'cancelled' && STOCK_RESERVED_STATUSES.includes(order.status)) {
+      for (const item of updated.items) {
         await Product.updateOne(
           { _id: item.product, 'variants._id': item.variantId },
           { $inc: { 'variants.$.stock': item.quantity } }
@@ -247,10 +281,7 @@ export const updateOrderStatus = async (req, res) => {
       }
     }
 
-    order.status = status;
-    await order.save();
-
-    res.status(200).json(order);
+    res.status(200).json(updated);
   } catch (error) {
     res.status(500).json({ message: 'خطا در بروزرسانی وضعیت سفارش', error: error.message });
   }

@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Zap } from 'lucide-react';
 import { Product } from '@/types/product';
-import { formatPrice, getImageUrl } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
+import ApiImage from '@/components/ui/ApiImage';
 
 export default function ProductCard({ product }: { product: Product }) {
   const firstVariant = product.variants[0];
@@ -16,8 +16,8 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       <div className="relative aspect-square overflow-hidden bg-ink-100">
         {product.images[0] ? (
-          <Image
-            src={getImageUrl(product.images[0])}
+          <ApiImage
+            src={product.images[0]}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"

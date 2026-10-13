@@ -2,55 +2,39 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard,
-  Package,
-  FolderTree,
-  ShoppingCart,
-  Users,
-  Zap,
-  X,
-} from 'lucide-react';
-import { useAdminUIStore } from '@/store/useAdminUIStore';
+import { motion } from 'framer-motion';
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Zap, X } from 'lucide-react';
 
 const navItems = [
   { label: 'داشبورد', href: '/admin', icon: LayoutDashboard },
+  { label: 'سفارشات', href: '/admin/orders', icon: ShoppingCart },
   { label: 'محصولات', href: '/admin/products', icon: Package },
   { label: 'دسته‌بندی‌ها', href: '/admin/categories', icon: FolderTree },
-  { label: 'سفارشات', href: '/admin/orders', icon: ShoppingCart },
   { label: 'کاربران', href: '/admin/users', icon: Users },
 ];
 
-export default function AdminSidebar() {
-  const pathname = usePathname();
-  const sidebarOpen = useAdminUIStore((s) => s.sidebarOpen);
-  const closeSidebar = useAdminUIStore((s) => s.closeSidebar);
+interface AdminSidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  // با هر تغییر مسیر، ساید‌بار موبایل خودکار بسته بشه
-  useEffect(() => {
-    closeSidebar();
-  }, [pathname, closeSidebar]);
+export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+  const pathname = usePathname();
 
   return (
     <>
-      {/* بک‌دراپ موبایل - فقط وقتی بازه نمایش داده میشه */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeSidebar}
-            className="fixed inset-0 z-40 bg-ink-900/60 backdrop-blur-sm lg:hidden"
-          />
-        )}
-      </AnimatePresence>
+      {/* پس‌زمینه‌ی تیره فقط روی موبایل */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
       <aside
         className={`fixed inset-y-0 right-0 z-50 flex w-64 flex-col border-l border-ink-800 bg-ink-900 transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : 'translate-x-full'
+          isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex h-16 items-center justify-between border-b border-ink-800 px-6">
@@ -58,21 +42,18 @@ export default function AdminSidebar() {
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500/10 text-brand-500">
               <Zap className="h-4 w-4" strokeWidth={2.5} />
             </span>
-            <span className="text-sm font-black tracking-tight text-ink-100">
-              پنل مدیریت
-            </span>
+            <span className="text-sm font-black tracking-tight text-ink-100">پنل مدیریت</span>
           </div>
-
           <button
-            onClick={closeSidebar}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-ink-100/50 hover:bg-ink-800 hover:text-ink-100 lg:hidden"
+            onClick={onClose}
+            className="text-ink-100/60 hover:text-ink-100 lg:hidden"
             aria-label="بستن منو"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {navItems.map((item) => {
             const isActive =
               item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);

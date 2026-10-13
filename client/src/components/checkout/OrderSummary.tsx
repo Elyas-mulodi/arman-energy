@@ -1,7 +1,7 @@
-import Image from 'next/image';
-import { CartItem } from '@/types/cart';
-import { formatPrice, getImageUrl } from '@/lib/utils';
 import { Zap } from 'lucide-react';
+import { CartItem } from '@/types/cart';
+import { formatPrice } from '@/lib/utils';
+import ApiImage from '@/components/ui/ApiImage';
 
 export default function OrderSummary({ items, subtotal }: { items: CartItem[]; subtotal: number }) {
   const shippingCost = 0;
@@ -24,8 +24,8 @@ export default function OrderSummary({ items, subtotal }: { items: CartItem[]; s
             <div key={item._id} className="flex items-center gap-3">
               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-ink-100">
                 {item.product.image ? (
-                  <Image
-                    src={getImageUrl(item.product.image)}
+                  <ApiImage
+                    src={item.product.image}
                     alt={item.product.name}
                     fill
                     sizes="56px"
@@ -37,7 +37,7 @@ export default function OrderSummary({ items, subtotal }: { items: CartItem[]; s
                   </div>
                 )}
               </div>
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <p className="line-clamp-1 text-sm font-bold text-ink-900">{item.product.name}</p>
                 <p className="text-xs text-ink-800/40">
                   {[item.variant.voltage, item.variant.size, item.variant.brand]

@@ -1,126 +1,128 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
-import { X, AlertTriangle } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { AvailableCartItem } from '@/types/cart';
-import { useCartStore } from '@/store/useCartStore';
-import QuantityStepper from './QuantityStepper';
+import { Minus, Plus, Trash2, Zap, Loader2 } from 'lucide-react';
+import { CartItem } from '@/types/cart';
+import { formatPrice } from '@/lib/utils';
+import ApiImage from '@/components/ui/ApiImage';
 
-function formatPrice(n: number) {
-  return n.toLocaleString('fa-IR');
+interface CartItemRowProps {
+  item: CartItem;
+  isBusy: boolean;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onRemove: (itemId: string) => void;
 }
 
-export default function CartItemRow({ item }: { item: AvailableCartItem }) {
-  const updateQuantity = useCartStore((s) => s.updateQuantity);
-  const removeItem = useCartStore((s) => s.removeItem);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
+export default function CartItemRow({
+  item,
+  isBusy,
+  onQuantityChange,
+  onRemove,
+}: CartItemRowProps) {
+  // آیتمی که دیگه موجود نیست
+  if (!item.available) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+        <div className="min-w-0">
+          {item.product?.name && (
+            <p className="truncate text-sm font-bold text-ink-900">{item.product.name}</p>
+          )}
+          <p className="text-xs font-bold text-red-500">{item.message}</p>
+        </div>
+        <button
+          onClick={() => onRemove(item._id)}
+          disabled={isBusy}
+          className="flex shrink-0 items-center gap-1 rounded-md px-3 py-2 text-xs font-bold text-red-500 transition hover:bg-red-100 disabled:opacity-50"
+        >
+          {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          حذف
+        </button>
+      </div>
+    );
+  }
 
-  const variantLabel = [item.variant.voltage, item.variant.size, item.variant.brand]
-    .filter(Boolean)
-    .join(' - ');
-  const hasDiscount = item.variant.discountPrice && item.variant.discountPrice < item.variant.price;
-  const unitPrice = item.variant.discountPrice || item.variant.price;
-
-  const handleQuantityChange = async (next: number) => {
-    if (next < 1 || next > item.variant.stock) return;
-    setIsUpdating(true);
-    try {
-      await updateQuantity(item._id, next);
-    } catch {
-      toast.error('خطا در به‌روزرسانی تعداد');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    setIsRemoving(true);
-    try {
-      await removeItem(item._id);
-    } catch {
-      toast.error('خطا در حذف آیتم');
-      setIsRemoving(false);
-    }
-  };
+  const { product, variant, quantity, lineTotal, stockWarning } = item;
+  const unitPrice = variant.discountPrice || variant.price;
+  const variantLabel = [variant.voltage, variant.size, variant.brand].filter(Boolean).join(' - ');
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: 40, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
-      transition={{ duration: 0.25 }}
-      className="flex gap-4 border-b border-ink-800/8 py-5 last:border-0"
-    >
+    <div className="flex gap-3 rounded-lg border border-ink-800/10 bg-white p-3 sm:gap-4 sm:p-4">
       <Link
-        href={`/products/${item.product.slug}`}
-        className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-ink-800/10 bg-ink-100"
+        href={`/products/${product.slug}`}
+        className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-ink-100 sm:h-24 sm:w-24"
       >
-        {item.product.image ? (
-          <Image src={item.product.image} alt={item.product.name} fill sizes="80px" className="object-cover" />
-        ) : null}
-      </Link>
-
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <Link
-              href={`/products/${item.product.slug}`}
-              className="text-sm font-bold text-ink-900 transition hover:text-brand-600"
-            >
-              {item.product.name}
-            </Link>
-            {variantLabel && <p className="mt-0.5 text-xs text-ink-800/45">{variantLabel}</p>}
-          </div>
-
-          <button
-            onClick={handleRemove}
-            disabled={isRemoving}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-800/30 transition hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
-            aria-label="حذف از سبد"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {item.stockWarning && (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600">
-            <AlertTriangle className="h-3 w-3" />
-            {item.stockWarning}
+        {product.image ? (
+          <ApiImage
+            src={product.image}
+            alt={product.name}
+            fill
+            sizes="96px"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-ink-900 to-ink-800">
+            <Zap className="h-6 w-6 text-brand-500" />
           </div>
         )}
+      </Link>
 
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-          <QuantityStepper
-            quantity={item.quantity}
-            max={item.variant.stock}
-            disabled={isUpdating}
-            onChange={handleQuantityChange}
-          />
+      <div className="flex min-w-0 flex-1 flex-col justify-between">
+        <div>
+          <Link
+            href={`/products/${product.slug}`}
+            className="line-clamp-1 text-sm font-bold text-ink-900 hover:text-brand-600"
+          >
+            {product.name}
+          </Link>
+          {variantLabel && <p className="mt-0.5 text-xs text-ink-800/45">{variantLabel}</p>}
+          {stockWarning && <p className="mt-1 text-xs font-bold text-amber-600">{stockWarning}</p>}
+        </div>
 
-          <div className="text-left">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-black text-ink-900">{formatPrice(item.lineTotal)}</span>
-              <span className="text-[10px] text-ink-800/45">تومان</span>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center overflow-hidden rounded-md border border-ink-800/15">
+            <button
+              onClick={() => onQuantityChange(item._id, quantity - 1)}
+              disabled={isBusy || quantity <= 1}
+              className="flex h-8 w-8 items-center justify-center text-ink-800/60 transition hover:bg-ink-800/5 disabled:opacity-30"
+              aria-label="کاهش تعداد"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <span className="flex h-8 w-9 items-center justify-center text-sm font-bold text-ink-900">
+              {isBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-500" />
+              ) : (
+                quantity.toLocaleString('fa-IR')
+              )}
+            </span>
+            <button
+              onClick={() => onQuantityChange(item._id, quantity + 1)}
+              disabled={isBusy || quantity >= variant.stock}
+              className="flex h-8 w-8 items-center justify-center text-ink-800/60 transition hover:bg-ink-800/5 disabled:opacity-30"
+              aria-label="افزایش تعداد"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-left">
+              {quantity > 1 && (
+                <p className="text-[11px] text-ink-800/40">هر عدد {formatPrice(unitPrice)}</p>
+              )}
+              <p className="text-sm font-black text-brand-600">{formatPrice(lineTotal)}</p>
             </div>
-            {hasDiscount && (
-              <p className="text-[11px] text-ink-800/35 line-through">
-                {formatPrice(item.variant.price * item.quantity)}
-              </p>
-            )}
-            {item.quantity > 1 && (
-              <p className="text-[10px] text-ink-800/35">
-                {formatPrice(unitPrice)} × {item.quantity.toLocaleString('fa-IR')}
-              </p>
-            )}
+            <button
+              onClick={() => onRemove(item._id)}
+              disabled={isBusy}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-ink-800/40 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
+              aria-label="حذف از سبد"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

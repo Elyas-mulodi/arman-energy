@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import api from '@/lib/axios';
-import { getErrorMessage } from '@/store/useAuthStore';
-import { Product } from '@/types/product';
-import { VariantDraft, SpecDraft, emptyVariant } from '@/types/productForm';
-import CategorySelect from './CategorySelect';
-import VariantFieldsEditor from './VariantFieldsEditor';
-import SpecFieldsEditor from './SpecFieldsEditor';
-import ImageUploader from './ImageUploader';
+import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
+import api from "@/lib/axios";
+import { getErrorMessage } from "@/store/useAuthStore";
+import { Product } from "@/types/product";
+import { VariantDraft, SpecDraft, emptyVariant } from "@/types/productForm";
+import CategorySelect from "./CategorySelect";
+import VariantFieldsEditor from "./VariantFieldsEditor";
+import SpecFieldsEditor from "./SpecFieldsEditor";
+import ImageUploader from "./ImageUploader";
 
 interface ProductFormProps {
   initialProduct?: Product; // اگه پاس داده بشه، یعنی حالت ویرایش
@@ -21,12 +21,12 @@ function toVariantDrafts(product?: Product): VariantDraft[] {
   if (!product || product.variants.length === 0) return [{ ...emptyVariant }];
   return product.variants.map((v) => ({
     _id: v._id,
-    voltage: v.voltage || '',
-    size: v.size || '',
-    brand: v.brand || '',
+    voltage: v.voltage || "",
+    size: v.size || "",
+    brand: v.brand || "",
     sku: v.sku,
     price: String(v.price),
-    discountPrice: v.discountPrice ? String(v.discountPrice) : '',
+    discountPrice: v.discountPrice ? String(v.discountPrice) : "",
     stock: String(v.stock),
     isActive: v.isActive,
   }));
@@ -36,22 +36,34 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
   const router = useRouter();
   const isEditMode = Boolean(initialProduct);
 
-  const [name, setName] = useState(initialProduct?.name || '');
-  const [description, setDescription] = useState(initialProduct?.description || '');
-  const [categoryId, setCategoryId] = useState(
-    typeof initialProduct?.category === 'string'
-      ? initialProduct.category
-      : initialProduct?.category?._id || ''
+  const [name, setName] = useState(initialProduct?.name || "");
+  const [description, setDescription] = useState(
+    initialProduct?.description || "",
   );
-  const [isFeatured, setIsFeatured] = useState(initialProduct?.isFeatured || false);
-  const [variants, setVariants] = useState<VariantDraft[]>(toVariantDrafts(initialProduct));
-  const [specs, setSpecs] = useState<SpecDraft[]>(initialProduct?.specifications || []);
+  const [categoryId, setCategoryId] = useState(
+    typeof initialProduct?.category === "string"
+      ? initialProduct.category
+      : initialProduct?.category?._id || "",
+  );
+  const [isFeatured, setIsFeatured] = useState(
+    initialProduct?.isFeatured || false,
+  );
+  const [variants, setVariants] = useState<VariantDraft[]>(
+    toVariantDrafts(initialProduct),
+  );
+  const [specs, setSpecs] = useState<SpecDraft[]>(
+    initialProduct?.specifications || [],
+  );
 
-  const [existingImages, setExistingImages] = useState<string[]>(initialProduct?.images || []);
+  const [existingImages, setExistingImages] = useState<string[]>(
+    initialProduct?.images || [],
+  );
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isActive, setIsActive] = useState(initialProduct?.isActive ?? true);
 
   const handleRemoveExistingImage = (url: string) => {
     setExistingImages((prev) => prev.filter((img) => img !== url));
@@ -59,9 +71,36 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
   };
 
   const validateVariants = (): boolean => {
-    for (const v of variants) {
-      if (!v.sku.trim() || !v.price || !v.stock) {
-        toast.error('برای هر وریانت، SKU، قیمت و موجودی الزامی است');
+    const seenSkus = new Set<string>();
+
+    for (const [index, v] of variants.entries()) {
+      const label = `وریانت ${index + 1}`;
+      const sku = v.sku.trim();
+
+      if (!sku || v.price === "" || v.stock === "") {
+        toast.error(`${label}: SKU، قیمت و موجودی الزامی است`);
+        return false;
+      }
+      if (seenSkus.has(sku.toLowerCase())) {
+        toast.error(`${label}: کد SKU تکراری است`);
+        return false;
+      }
+      seenSkus.add(sku.toLowerCase());
+
+      const price = Number(v.price);
+      const stock = Number(v.stock);
+      const discount = v.discountPrice ? Number(v.discountPrice) : null;
+
+      if (!Number.isFinite(price) || price <= 0) {
+        toast.error(`${label}: قیمت باید بیشتر از صفر باشد`);
+        return false;
+      }
+      if (!Number.isInteger(stock) || stock < 0) {
+        toast.error(`${label}: موجودی باید عدد صحیح و غیرمنفی باشد`);
+        return false;
+      }
+      if (discount !== null && (discount <= 0 || discount >= price)) {
+        toast.error(`${label}: قیمت تخفیف باید کمتر از قیمت اصلی باشد`);
         return false;
       }
     }
@@ -72,7 +111,7 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
     e.preventDefault();
 
     if (!categoryId) {
-      toast.error('انتخاب دسته‌بندی الزامی است');
+      toast.error("انتخاب دسته‌بندی الزامی است");
       return;
     }
     if (!validateVariants()) return;
@@ -82,11 +121,11 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
     try {
       // چون فایل داریم، باید از FormData استفاده کنیم نه JSON ساده
       const formData = new FormData();
-      formData.append('name', name);
-      formData.append('description', description);
-      formData.append('category', categoryId);
-      formData.append('isFeatured', String(isFeatured));
-
+      formData.append("name", name);
+      formData.append("description", description);
+      formData.append("category", categoryId);
+      formData.append("isFeatured", String(isFeatured));
+      formData.append("isActive", String(isActive));
       // variants و specifications به‌صورت JSON.stringify شده فرستاده میشن
       // چون کنترلر بک‌اند دقیقا همین انتظار رو داره (چون multipart فقط رشته/فایل قبول می‌کنه)
       const variantsPayload = variants.map((v) => ({
@@ -94,34 +133,36 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
         voltage: v.voltage || undefined,
         size: v.size || undefined,
         brand: v.brand || undefined,
-        sku: v.sku,
+        sku: v.sku.trim(),
         price: Number(v.price),
         discountPrice: v.discountPrice ? Number(v.discountPrice) : null,
         stock: Number(v.stock),
         isActive: v.isActive,
       }));
-      formData.append('variants', JSON.stringify(variantsPayload));
+      formData.append("variants", JSON.stringify(variantsPayload));
 
       const specsPayload = specs.filter((s) => s.key.trim() && s.value.trim());
-      formData.append('specifications', JSON.stringify(specsPayload));
+      formData.append("specifications", JSON.stringify(specsPayload));
 
-      newFiles.forEach((file) => formData.append('images', file));
+      newFiles.forEach((file) => formData.append("images", file));
 
       if (isEditMode && initialProduct) {
         await api.put(`/products/${initialProduct._id}`, formData);
 
         // عکس‌های حذف‌شده رو جدا پاک می‌کنیم چون بک‌اند یه روت مجزا براش داره
         for (const imageUrl of imagesToDelete) {
-          await api.delete(`/products/${initialProduct._id}/images`, { data: { imageUrl } });
+          await api.delete(`/products/${initialProduct._id}/images`, {
+            data: { imageUrl },
+          });
         }
 
-        toast.success('محصول با موفقیت به‌روزرسانی شد');
+        toast.success("محصول با موفقیت به‌روزرسانی شد");
       } else {
-        await api.post('/products', formData);
-        toast.success('محصول با موفقیت ایجاد شد');
+        await api.post("/products", formData);
+        toast.success("محصول با موفقیت ایجاد شد");
       }
 
-      router.push('/admin/products');
+      router.push("/admin/products");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -133,7 +174,9 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
     <form onSubmit={handleSubmit} className="max-w-3xl">
       <div className="mb-6 rounded-xl border border-ink-800/10 bg-white p-6">
         <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-bold text-ink-800/60">نام محصول</label>
+          <label className="mb-1.5 block text-xs font-bold text-ink-800/60">
+            نام محصول
+          </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -143,7 +186,9 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
         </div>
 
         <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-bold text-ink-800/60">توضیحات</label>
+          <label className="mb-1.5 block text-xs font-bold text-ink-800/60">
+            توضیحات
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -163,7 +208,15 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
           />
           نمایش به‌عنوان محصول ویژه در صفحه اصلی
         </label>
-
+        <label className="mb-4 flex items-center gap-1.5 text-sm text-ink-800/70">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="accent-brand-500"
+          />
+          محصول فعال و قابل نمایش در سایت
+        </label>
         <ImageUploader
           existingImages={existingImages}
           onRemoveExisting={handleRemoveExistingImage}
@@ -184,11 +237,11 @@ export default function ProductForm({ initialProduct }: ProductFormProps) {
           className="flex items-center justify-center gap-2 rounded-md bg-brand-500 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-600 disabled:opacity-60"
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isEditMode ? 'ذخیره تغییرات' : 'ایجاد محصول'}
+          {isEditMode ? "ذخیره تغییرات" : "ایجاد محصول"}
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/products')}
+          onClick={() => router.push("/admin/products")}
           className="rounded-md border border-ink-800/15 px-6 py-2.5 text-sm font-bold text-ink-800/70 hover:bg-ink-800/5"
         >
           انصراف

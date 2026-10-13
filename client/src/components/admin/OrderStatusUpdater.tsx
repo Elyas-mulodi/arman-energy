@@ -1,10 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { OrderStatus } from '@/types/order';
-import { ORDER_STATUS_MAP, ADMIN_EDITABLE_STATUSES } from '@/lib/orderStatus';
+import {
+  ORDER_STATUS_MAP,
+  ORDER_TRANSITIONS,
+  STATUS_ACTION_LABEL,
+  FINAL_STATUS_MESSAGE,
+} from '@/lib/orderStatus';
 import { updateOrderStatusAdmin } from '@/lib/orders';
 import { getErrorMessage } from '@/store/useAuthStore';
 
@@ -19,51 +24,72 @@ export default function OrderStatusUpdater({
   currentStatus,
   onUpdated,
 }: OrderStatusUpdaterProps) {
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [pending, setPending] = useState<OrderStatus | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
-  // اگه سفارش هنوز پرداخت نشده یا ناموفق بوده، اصلاً امکان تغییر وضعیت دستی نداره
-  const canEdit = currentStatus !== 'pending_payment' && currentStatus !== 'failed';
+  const nextStatuses = ORDER_TRANSITIONS[currentStatus] ?? [];
+  const primaryNext = nextStatuses.find((s) => s !== 'cancelled');
+  const canCancel = nextStatuses.includes('cancelled');
+  const isBusy = pending !== null;
 
-  const handleChange = async (newStatus: OrderStatus) => {
-    if (newStatus === currentStatus) return;
-
-    setIsUpdating(true);
+  const changeStatus = async (status: OrderStatus) => {
+    setPending(status);
     try {
-      await updateOrderStatusAdmin(orderId, newStatus);
-      onUpdated(newStatus);
-      toast.success('وضعیت سفارش به‌روزرسانی شد');
+      await updateOrderStatusAdmin(orderId, status);
+      onUpdated(status);
+      toast.success(`وضعیت سفارش: ${ORDER_STATUS_MAP[status].label}`);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
-      setIsUpdating(false);
+      setPending(null);
+      setConfirmCancel(false);
     }
   };
 
-  if (!canEdit) {
+  if (nextStatuses.length === 0) {
     return (
-      <p className="text-xs text-ink-800/40">
-        این سفارش هنوز پرداخت نشده و قابل تغییر وضعیت دستی نیست
+      <p className="rounded-md bg-ink-800/5 px-3 py-2 text-xs font-bold text-ink-800/50">
+        {FINAL_STATUS_MESSAGE[currentStatus] ?? 'وضعیت این سفارش قابل تغییر نیست'}
       </p>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <select
-        value={currentStatus}
-        onChange={(e) => handleChange(e.target.value as OrderStatus)}
-        disabled={isUpdating}
-        className="rounded-md border border-ink-800/15 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 disabled:opacity-60"
-      >
-        {/* وضعیت فعلی رو هم نشون بده حتی اگه paid باشه (نه فقط editable ها) */}
-        {currentStatus === 'paid' && <option value="paid">پرداخت‌شده</option>}
-        {ADMIN_EDITABLE_STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {ORDER_STATUS_MAP[status].label}
-          </option>
-        ))}
-      </select>
-      {isUpdating && <Loader2 className="h-4 w-4 animate-spin text-brand-500" />}
+    <div className="flex flex-wrap items-center gap-2">
+      {primaryNext && (
+        <button
+          onClick={() => changeStatus(primaryNext)}
+          disabled={isBusy}
+          className="flex items-center gap-2 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-brand-600 disabled:opacity-60"
+        >
+          {pending === primaryNext ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ArrowLeft className="h-4 w-4" />
+          )}
+          {STATUS_ACTION_LABEL[primaryNext]}
+        </button>
+      )}
+
+      {canCancel && (
+        <button
+          onClick={() => (confirmCancel ? changeStatus('cancelled') : setConfirmCancel(true))}
+          onBlur={() => setConfirmCancel(false)}
+          disabled={isBusy}
+          className={`flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-bold transition disabled:opacity-60 ${
+            confirmCancel
+              ? 'border-red-500 bg-red-500 text-white'
+              : 'border-red-500/25 text-red-500 hover:bg-red-50'
+          }`}
+        >
+          {pending === 'cancelled' ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
+          {confirmCancel ? 'مطمئنی؟ موجودی برمی‌گردد' : STATUS_ACTION_LABEL.cancelled}
+        </button>
+      )}
     </div>
   );
 }

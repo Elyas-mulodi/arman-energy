@@ -1,11 +1,8 @@
+import { OrderStatus } from '@/types/order';
+
 export interface DashboardOverview {
-  today: {
-    orders: number;
-  };
-  month: {
-    orders: number;
-    revenue: number;
-  };
+  today: { orders: number; revenue: number };
+  month: { orders: number; revenue: number };
   overall: {
     totalPaidOrders: number;
     totalRevenue: number;
@@ -13,6 +10,7 @@ export interface DashboardOverview {
     totalProducts: number;
   };
   pendingOrdersCount: number;
+  statusBreakdown: Record<OrderStatus, number>;
   lowStockProducts: {
     _id: string;
     name: string;
@@ -28,7 +26,7 @@ export interface BestSeller {
 }
 
 export interface RevenueChartPoint {
-  _id: string; // تاریخ به فرمت YYYY-MM-DD
+  _id: string; // YYYY-MM-DD
   revenue: number;
   orders: number;
 }

@@ -1,41 +1,68 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Trash2, PackageX, Loader2, Layers, X, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, PackageX, Loader2, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/axios';
 import { getErrorMessage } from '@/store/useAuthStore';
 import { Product } from '@/types/product';
 import { formatPrice } from '@/lib/utils';
+import ApiImage from '@/components/ui/ApiImage';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '');
+type Filter = 'all' | 'active' | 'inactive' | 'out';
+
+const filters: { label: string; value: Filter }[] = [
+  { label: 'همه', value: 'all' },
+  { label: 'فعال', value: 'active' },
+  { label: 'غیرفعال', value: 'inactive' },
+  { label: 'ناموجود', value: 'out' },
+];
+
+const getTotalStock = (product: Product) =>
+  product.variants.filter((v) => v.isActive).reduce((sum, v) => sum + v.stock, 0);
+
+const getPriceLabel = (product: Product) => {
+  const prices = product.variants.filter((v) => v.isActive).map((v) => v.discountPrice || v.price);
+  if (prices.length === 0) return '—';
+  const min = Math.min(...prices);
+  return prices.length > 1 ? `از ${formatPrice(min)}` : formatPrice(min);
+};
+
+const getCategoryName = (product: Product) =>
+  typeof product.category === 'string' ? '—' : product.category.name;
+
+function StockBadge({ stock }: { stock: number }) {
+  if (stock === 0) {
+    return <span className="rounded bg-red-50 px-2 py-1 text-[11px] font-bold text-red-600">ناموجود</span>;
+  }
+  if (stock <= 5) {
+    return (
+      <span className="rounded bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-600">
+        {stock.toLocaleString('fa-IR')} عدد
+      </span>
+    );
+  }
+  return <span className="text-ink-800/60">{stock.toLocaleString('fa-IR')} عدد</span>;
+}
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    try {
-      const { data } = await api.get<Product[]>('/products/admin');
-      setProducts(data);
-    } catch {
-      toast.error('خطا در دریافت محصولات');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
 
   useEffect(() => {
-    fetchProducts();
+    api
+      .get<Product[]>('/products/admin')
+      .then((res) => setProducts(res.data))
+      .catch(() => toast.error('خطا در دریافت محصولات'))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const confirmDelete = async () => {
-    if (!productToDelete) return;
-    const product = productToDelete;
+  const handleDelete = async (product: Product) => {
+    if (!window.confirm(`آیا از حذف محصول «${product.name}» مطمئن هستید؟`)) return;
 
     setDeletingId(product._id);
     try {
@@ -46,122 +73,153 @@ export default function AdminProductsPage() {
       toast.error(getErrorMessage(error));
     } finally {
       setDeletingId(null);
-      setProductToDelete(null);
     }
   };
 
+  const visibleProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return products.filter((p) => {
+      if (term && !p.name.toLowerCase().includes(term)) return false;
+      if (filter === 'active') return p.isActive;
+      if (filter === 'inactive') return !p.isActive;
+      if (filter === 'out') return getTotalStock(p) === 0;
+      return true;
+    });
+  }, [products, search, filter]);
+
+  const renderActions = (product: Product) => (
+    <div className="flex items-center gap-1">
+      <Link
+        href={`/admin/products/${product._id}/edit`}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-800/50 hover:bg-ink-800/5 hover:text-brand-600"
+        aria-label="ویرایش"
+      >
+        <Pencil className="h-4 w-4" />
+      </Link>
+      <button
+        onClick={() => handleDelete(product)}
+        disabled={deletingId === product._id}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-800/50 hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
+        aria-label="حذف"
+      >
+        {deletingId === product._id ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Trash2 className="h-4 w-4" />
+        )}
+      </button>
+    </div>
+  );
+
+  const renderThumb = (product: Product, size: string, px: number) => (
+    <div className={`relative ${size} shrink-0 overflow-hidden rounded-md bg-ink-100`}>
+      {product.images[0] && (
+        <ApiImage src={product.images[0]} alt="" fill sizes={`${px}px`} className="object-cover" />
+      )}
+    </div>
+  );
+
   return (
     <div>
-      {/* هدر */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-ink-900">محصولات</h1>
-          <p className="mt-1 text-sm text-ink-800/40">
-            {isLoading ? 'در حال بارگذاری…' : `${products.length.toLocaleString('fa-IR')} محصول ثبت‌شده`}
-          </p>
+          <h1 className="text-xl font-black text-ink-900 sm:text-2xl">محصولات</h1>
+          {!isLoading && (
+            <p className="mt-0.5 text-xs text-ink-800/40">
+              {products.length.toLocaleString('fa-IR')} محصول
+            </p>
+          )}
         </div>
         <Link
           href="/admin/products/new"
-          className="flex items-center justify-center gap-1.5 rounded-md bg-brand-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-600 hover:shadow active:scale-[0.98] sm:w-auto"
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-600"
         >
           <Plus className="h-4 w-4" />
-          محصول جدید
+          <span className="hidden sm:inline">محصول جدید</span>
+          <span className="sm:hidden">جدید</span>
         </Link>
       </div>
 
-      {/* حالت لودینگ */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-ink-800/10 bg-white py-20">
-          <Loader2 className="mb-3 h-6 w-6 animate-spin text-brand-500" />
-          <p className="text-sm text-ink-800/40">در حال دریافت محصولات…</p>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+          {filters.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`shrink-0 rounded-md px-3.5 py-2 text-xs font-bold transition ${
+                filter === f.value
+                  ? 'bg-brand-500 text-white'
+                  : 'bg-white text-ink-800/60 hover:bg-ink-800/5'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-      ) : products.length === 0 ? (
-        /* حالت خالی */
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-800/15 bg-white py-20 text-center">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-ink-100">
-            <PackageX className="h-7 w-7 text-ink-800/30" />
-          </div>
-          <p className="text-sm font-bold text-ink-800/50">هنوز محصولی ثبت نشده</p>
-          <p className="mt-1 text-xs text-ink-800/30">با دکمه «محصول جدید» اولین محصول خودت رو اضافه کن</p>
+
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-800/30" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="جستجوی نام محصول..."
+            className="w-full rounded-md border border-ink-800/15 bg-white py-2 pr-9 pl-8 text-sm outline-none focus:border-brand-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-800/30 hover:text-ink-800/60"
+              aria-label="پاک کردن"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center rounded-xl border border-ink-800/10 bg-white py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-500" />
+        </div>
+      ) : visibleProducts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-ink-800/10 bg-white py-16 text-center">
+          <PackageX className="mb-3 h-8 w-8 text-ink-800/20" />
+          <p className="text-sm text-ink-800/40">
+            {products.length === 0 ? 'هنوز محصولی ثبت نشده' : 'محصولی با این فیلتر یافت نشد'}
+          </p>
         </div>
       ) : (
         <>
-          {/* --- نمای موبایل: کارت‌ها --- */}
-          <div className="grid grid-cols-1 gap-2 sm:hidden">
-            {products.map((product) => {
-              const categoryName =
-                typeof product.category === 'string' ? '-' : product.category.name;
-              const basePrice = product.variants[0]?.price || 0;
-              const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
-
-              return (
-                <div
-                  key={product._id}
-                  className="flex items-center gap-2.5 rounded-lg border border-ink-800/10 bg-white px-2.5 py-2 shadow-sm"
-                >
-                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md bg-ink-100">
-                    {product.images[0] && (
-                      <img
-                        src={`${API_BASE}${product.images[0]}`}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </div>
-
+          {/* موبایل: کارت */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {visibleProducts.map((product) => (
+              <div key={product._id} className="rounded-xl border border-ink-800/10 bg-white p-3">
+                <div className="flex gap-3">
+                  {renderThumb(product, 'h-16 w-16', 64)}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-[13px] font-bold leading-tight text-ink-900">
-                        {product.name}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded px-1.5 py-[1px] text-[9px] font-bold ${
-                          product.isActive
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-ink-800/5 text-ink-800/40'
-                        }`}
-                      >
-                        {product.isActive ? 'فعال' : 'غیرفعال'}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-[11px] text-ink-800/40">
-                      <span className="truncate">{categoryName}</span>
-                      <span className="shrink-0">·</span>
-                      <span className="shrink-0 font-bold text-ink-800/70">
-                        {formatPrice(basePrice)}
-                      </span>
-                      <span className="shrink-0 flex items-center gap-0.5">
-                        <Layers className="h-3 w-3" />
-                        {totalStock.toLocaleString('fa-IR')}
-                      </span>
-                    </div>
+                    <p className="truncate text-sm font-bold text-ink-900">{product.name}</p>
+                    <p className="text-xs text-ink-800/40">{getCategoryName(product)}</p>
+                    <p className="mt-1 text-xs font-bold text-brand-600">{getPriceLabel(product)}</p>
                   </div>
-
-                  <div className="flex shrink-0 items-center">
-                    <Link
-                      href={`/admin/products/${product._id}/edit`}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-ink-800/50 active:bg-ink-800/5"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Link>
-                    <button
-                      onClick={() => setProductToDelete(product)}
-                      disabled={deletingId === product._id}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-ink-800/50 active:bg-red-50 active:text-red-500 disabled:opacity-40"
-                    >
-                      {deletingId === product._id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  </div>
+                  {renderActions(product)}
                 </div>
-              );
-            })}
+                <div className="mt-3 flex items-center justify-between border-t border-ink-800/5 pt-2.5 text-xs">
+                  <StockBadge stock={getTotalStock(product)} />
+                  <span
+                    className={`rounded px-2 py-1 text-[11px] font-bold ${
+                      product.isActive
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-ink-800/5 text-ink-800/40'
+                    }`}
+                  >
+                    {product.isActive ? 'فعال' : 'غیرفعال'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* --- نمای دسکتاپ: جدول --- */}
+          {/* دسکتاپ: جدول */}
           <div className="hidden overflow-hidden rounded-xl border border-ink-800/10 bg-white sm:block">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -169,142 +227,52 @@ export default function AdminProductsPage() {
                   <tr className="border-b border-ink-800/10 bg-ink-100/50 text-right text-xs text-ink-800/50">
                     <th className="whitespace-nowrap px-4 py-3 font-bold">محصول</th>
                     <th className="whitespace-nowrap px-4 py-3 font-bold">دسته‌بندی</th>
-                    <th className="whitespace-nowrap px-4 py-3 font-bold">قیمت پایه</th>
-                    <th className="whitespace-nowrap px-4 py-3 font-bold">موجودی کل</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-bold">قیمت</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-bold">موجودی</th>
                     <th className="whitespace-nowrap px-4 py-3 font-bold">وضعیت</th>
                     <th className="whitespace-nowrap px-4 py-3 font-bold">عملیات</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((product) => {
-                    const categoryName =
-                      typeof product.category === 'string' ? '-' : product.category.name;
-                    const basePrice = product.variants[0]?.price || 0;
-                    const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
-
-                    return (
-                      <tr
-                        key={product._id}
-                        className="border-b border-ink-800/5 transition-colors last:border-0 hover:bg-ink-100/40"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-ink-100">
-                              {product.images[0] && (
-                                <img
-                                  src={`${API_BASE}${product.images[0]}`}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              )}
-                            </div>
-                            <span className="font-bold text-ink-900">{product.name}</span>
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-ink-800/60">
-                          {categoryName}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-ink-800/60">
-                          {formatPrice(basePrice)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-ink-800/60">
-                          {totalStock.toLocaleString('fa-IR')}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <span
-                            className={`rounded px-2 py-1 text-[11px] font-bold ${
-                              product.isActive
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : 'bg-ink-800/5 text-ink-800/40'
-                            }`}
-                          >
-                            {product.isActive ? 'فعال' : 'غیرفعال'}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <Link
-                              href={`/admin/products/${product._id}/edit`}
-                              className="flex h-8 w-8 items-center justify-center rounded-md text-ink-800/50 transition hover:bg-ink-800/5 hover:text-brand-600"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Link>
-                            <button
-                              onClick={() => setProductToDelete(product)}
-                              disabled={deletingId === product._id}
-                              className="flex h-8 w-8 items-center justify-center rounded-md text-ink-800/50 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
-                            >
-                              {deletingId === product._id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {visibleProducts.map((product) => (
+                    <tr
+                      key={product._id}
+                      className="border-b border-ink-800/5 last:border-0 hover:bg-ink-100/40"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {renderThumb(product, 'h-10 w-10', 40)}
+                          <span className="font-bold text-ink-900">{product.name}</span>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-ink-800/60">
+                        {getCategoryName(product)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-ink-800/60">
+                        {getPriceLabel(product)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <StockBadge stock={getTotalStock(product)} />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span
+                          className={`rounded px-2 py-1 text-[11px] font-bold ${
+                            product.isActive
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-ink-800/5 text-ink-800/40'
+                          }`}
+                        >
+                          {product.isActive ? 'فعال' : 'غیرفعال'}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">{renderActions(product)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </>
-      )}
-
-      {/* --- مودال تأیید حذف --- */}
-      {productToDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 px-4 backdrop-blur-[2px]"
-          onClick={() => deletingId === null && setProductToDelete(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </div>
-              <button
-                onClick={() => setProductToDelete(null)}
-                disabled={deletingId !== null}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-ink-800/30 transition hover:bg-ink-800/5 hover:text-ink-800/60 disabled:opacity-40"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <h2 className="mt-3 text-base font-black text-ink-900">حذف محصول</h2>
-            <p className="mt-1.5 text-sm leading-6 text-ink-800/50">
-              آیا از حذف محصول{' '}
-              <span className="font-bold text-ink-800/80">«{productToDelete.name}»</span> مطمئن
-              هستید؟ این عملیات قابل بازگشت نیست.
-            </p>
-
-            <div className="mt-5 flex items-center gap-2">
-              <button
-                onClick={() => setProductToDelete(null)}
-                disabled={deletingId !== null}
-                className="flex-1 rounded-lg border border-ink-800/10 py-2.5 text-sm font-bold text-ink-800/60 transition hover:bg-ink-100/50 disabled:opacity-40"
-              >
-                انصراف
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deletingId !== null}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-500 py-2.5 text-sm font-bold text-white transition hover:bg-red-600 disabled:opacity-60"
-              >
-                {deletingId !== null ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-                حذف محصول
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

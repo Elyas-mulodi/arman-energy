@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, ChevronRight, ChevronLeft } from 'lucide-react';
-import { getImageUrl } from '@/lib/utils';
-
-const MotionImage = motion(Image);
+import ApiImage from '@/components/ui/ApiImage';
 
 export default function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -37,19 +34,23 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
     <div>
       <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-ink-100">
         <AnimatePresence mode="wait">
-          <MotionImage
+          <motion.div
             key={activeIndex}
-            src={getImageUrl(images[activeIndex])}
-            alt={`${name} - تصویر ${activeIndex + 1}`}
-            fill
-            priority={activeIndex === 0}
-            sizes="(max-width: 768px) 100vw, 50vw"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="object-cover"
-          />
+            className="absolute inset-0"
+          >
+            <ApiImage
+              src={images[activeIndex]}
+              alt={`${name} - تصویر ${activeIndex + 1}`}
+              fill
+              priority={activeIndex === 0}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+            />
+          </motion.div>
         </AnimatePresence>
 
         {images.length > 1 && (
@@ -82,7 +83,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
                 index === activeIndex ? 'border-brand-500' : 'border-transparent opacity-60'
               }`}
             >
-              <Image src={getImageUrl(img)} alt="" fill sizes="64px" className="object-cover" />
+              <ApiImage src={img} alt="" fill sizes="64px" className="object-cover" />
             </button>
           ))}
         </div>

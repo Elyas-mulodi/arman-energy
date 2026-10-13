@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Loader2, ArrowLeft } from 'lucide-react';
-import { useOrder } from '@/hooks/useOrder';
-import { resultConfigs, PaymentStatus } from '@/components/checkout/ResultStates';
-import { formatPrice } from '@/lib/utils';
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Loader2, ArrowLeft } from "lucide-react";
+import { useOrder } from "@/hooks/useOrder";
+import {
+  resultConfigs,
+  PaymentStatus,
+} from "@/components/checkout/ResultStates";
+import { formatPrice } from "@/lib/utils";
 
 function ResultSkeleton() {
   return (
@@ -19,24 +22,33 @@ function ResultSkeleton() {
 
 function CheckoutResultContent() {
   const searchParams = useSearchParams();
-  const statusParam = searchParams.get('status');
-  const orderNumber = searchParams.get('order');
+  const statusParam = searchParams.get("status");
+  const orderNumber = searchParams.get("order");
 
   // اگه status پارامتری بود که ما نمی‌شناسیم (مثلا دستکاری URL)، به حالت error بیفت
   const isKnownStatus = (value: string | null): value is PaymentStatus =>
     !!value && value in resultConfigs;
 
-  const status: PaymentStatus = isKnownStatus(statusParam) ? statusParam : 'error';
+  const status: PaymentStatus = isKnownStatus(statusParam)
+    ? statusParam
+    : "error";
   const config = resultConfigs[status];
 
-  const { order, status: orderFetchStatus } = useOrder(status === 'success' ? orderNumber : null);
+  const { order, status: orderFetchStatus } = useOrder(
+    status === "success" ? orderNumber : null,
+  );
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center px-4 py-16 text-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, type: 'spring', stiffness: 300, damping: 22 }}
+        transition={{
+          duration: 0.4,
+          type: "spring",
+          stiffness: 300,
+          damping: 22,
+        }}
         className={`mb-6 flex h-20 w-20 items-center justify-center rounded-full ${config.iconBg} ${config.iconColor}`}
       >
         <config.icon className="h-9 w-9" />
@@ -61,7 +73,7 @@ function CheckoutResultContent() {
       </motion.p>
 
       {/* جزئیات سفارش - فقط وقتی پرداخت موفق بوده و اطلاعات سفارش لود شده */}
-      {status === 'success' && orderFetchStatus === 'success' && order && (
+      {status === "success" && orderFetchStatus === "success" && order && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -70,7 +82,10 @@ function CheckoutResultContent() {
         >
           <div className="mb-3 flex items-center justify-between border-b border-ink-800/10 pb-3">
             <span className="text-xs text-ink-800/40">شماره سفارش</span>
-            <span className="font-mono text-sm font-bold text-ink-900" dir="ltr">
+            <span
+              className="font-mono text-sm font-bold text-ink-900"
+              dir="ltr"
+            >
               {order.orderNumber}
             </span>
           </div>
@@ -83,7 +98,7 @@ function CheckoutResultContent() {
         </motion.div>
       )}
 
-      {orderNumber && status !== 'success' && (
+      {orderNumber && status !== "success" && (
         <p className="mb-6 font-mono text-xs text-ink-800/40" dir="ltr">
           شماره پیگیری: {orderNumber}
         </p>
@@ -95,9 +110,9 @@ function CheckoutResultContent() {
         transition={{ duration: 0.4, delay: 0.25 }}
         className="flex flex-col gap-3 sm:flex-row"
       >
-        {status === 'success' ? (
+        {status === "success" ? (
           <Link
-            href="/profile/orders"
+            href="/profile?tab=orders"
             className="rounded-md bg-brand-500 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-600"
           >
             مشاهده سفارشات من

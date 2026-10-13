@@ -1,55 +1,84 @@
-import { Metadata } from 'next';
-import { buildCategoryTree } from '@/lib/categoryTree';
-import CategoryPlate from '@/components/categories/CategoryPlate';
-import CategoriesEmpty from '@/components/categories/CategoriesEmpty';
-import { getCategories } from '@/lib/categories';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'دسته‌بندی محصولات | آرمان انرژی',
-  description: 'دسته‌بندی کامل موتور کولرهای آبی و قطعات جانبی',
-};
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { motion } from 'framer-motion';
+import { AlertTriangle, LayoutGrid } from 'lucide-react';
+import api from '@/lib/axios';
+import { Category } from '@/types/category';
+import CategoryCard from '@/components/site/CategoryCard';
+import EmptyState from '@/components/ui/EmptyState';
 
-export default async function CategoriesPage() {
-  const categories = await getCategories();
-  const tree = buildCategoryTree(categories);
+type Status = 'loading' | 'success' | 'error';
+
+export default function CategoriesPage() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [status, setStatus] = useState<Status>('loading');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    api
+      .get<Category[]>('/categories', { signal: controller.signal })
+      .then((res) => {
+        setCategories(res.data);
+        setStatus('success');
+      })
+      .catch((error) => {
+        if (axios.isCancel(error)) return;
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, []);
 
   return (
-    <div className="relative overflow-hidden bg-ink-100">
-      {/* هدر صفحه */}
-      <div className="relative border-b border-ink-800 bg-ink-900 px-4 py-14">
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              'linear-gradient(var(--color-ink-100) 1px, transparent 1px), linear-gradient(90deg, var(--color-ink-100) 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
-          }}
-        />
-        <div className="relative mx-auto max-w-7xl">
-          <p className="mb-2 font-mono text-xs tracking-widest text-brand-500" dir="ltr">
-            PRODUCT CATALOG
-          </p>
-          <h1 className="mb-2 text-3xl font-black tracking-tight text-ink-100 sm:text-4xl">
-            دسته‌بندی محصولات
-          </h1>
-          <p className="max-w-md text-sm leading-6 text-ink-100/50">
-            {categories.length.toLocaleString('fa-IR')} دسته‌بندی از انواع موتور کولر و قطعات جانبی
-          </p>
-        </div>
+    <div className="mx-auto max-w-7xl px-4 py-10">
+      <div className="mb-8">
+        <h1 className="text-2xl font-black text-ink-900">دسته‌بندی‌ها</h1>
+        <p className="mt-1 text-sm text-ink-800/50">
+          محصول مورد نظرت رو بر اساس نیازت پیدا کن
+        </p>
       </div>
 
-      {/* گرید دسته‌ها */}
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        {tree.length === 0 ? (
-          <CategoriesEmpty />
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {tree.map((category, index) => (
-              <CategoryPlate key={category._id} category={category} index={index} />
-            ))}
-          </div>
-        )}
-      </div>
+      {status === 'loading' && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-lg bg-ink-800/5" />
+          ))}
+        </div>
+      )}
+
+      {status === 'error' && (
+        <EmptyState
+          icon={AlertTriangle}
+          title="مشکلی در دریافت دسته‌بندی‌ها پیش آمد"
+          description="لطفا اتصال اینترنت خود را بررسی کرده و دوباره تلاش کنید"
+        />
+      )}
+
+      {status === 'success' && categories.length === 0 && (
+        <EmptyState
+          icon={LayoutGrid}
+          title="هنوز دسته‌بندی‌ای ثبت نشده"
+          description="به‌زودی دسته‌بندی‌های جدید اضافه می‌شوند"
+        />
+      )}
+
+      {status === 'success' && categories.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {categories.map((category, index) => (
+            <motion.div
+              key={category._id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.04 }}
+            >
+              <CategoryCard category={category} />
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

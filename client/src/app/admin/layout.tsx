@@ -1,16 +1,11 @@
-import { ReactNode } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
+import type { Metadata } from 'next';
+import AdminShell from '@/components/admin/AdminShell';
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-screen bg-ink-100/40">
-      <AdminSidebar />
+export const metadata: Metadata = {
+  title: { default: 'پنل مدیریت', template: '%s | پنل مدیریت' },
+  robots: { index: false, follow: false },
+};
 
-      <div className="lg:mr-64">
-        <AdminHeader />
-        <main className="p-4 sm:p-6">{children}</main>
-      </div>
-    </div>
-  );
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <AdminShell>{children}</AdminShell>;
 }
