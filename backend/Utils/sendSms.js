@@ -1,4 +1,4 @@
-import { ENV } from '../config/env.js';
+import { ENV } from '../Config/env.js';
 
 export const sendSms = async (phone, message) => {
   if (!ENV.LIMOSMS_API_KEY) {

@@ -1,4 +1,4 @@
-import { ENV } from '../config/env.js';
+import { ENV } from '../Config/env.js';
 
 const LIMO_BASE = 'https://api.limosms.com/api';
 

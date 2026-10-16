@@ -3,6 +3,8 @@ import generateToken from "../../Utils/generateToken.js";
 import { sendSms } from "../../Utils/sendSms.js";
 import { generateOtp, hashOtp } from "../../Utils/otp.js";
 import { requestLimoOtp, verifyLimoOtp } from '../../Utils/limoOtpService.js';
+import { authCookieOptions } from '../../Utils/generateToken.js';
+
 
 export const registerUser = async (req, res) => {
   try {
@@ -102,11 +104,8 @@ export const loginUser = async (req, res) => {
 };
 
 export const logoutUser = (req, res) => {
-  res.cookie("token", "", {
-    httpOnly: true,
-    expires: new Date(0),
-  });
-  res.status(200).json({ message: "با موفقیت خارج شدید" });
+  res.clearCookie('token', authCookieOptions);
+  res.status(200).json({ message: 'با موفقیت خارج شدید' });
 };
 
 export const getUserProfile = async (req, res) => {

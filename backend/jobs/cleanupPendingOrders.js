@@ -1,38 +1,26 @@
 import cron from 'node-cron';
 import Order from '../Modules/Order/OrderMd.js';
-
-const PENDING_ORDER_MAX_AGE_HOURS = 24;
+import { ENV } from '../Config/env.js';
 
 const cleanupPendingOrders = async () => {
   try {
-    const cutoffDate = new Date(Date.now() - PENDING_ORDER_MAX_AGE_HOURS * 60 * 60 * 1000);
-
-    // --- لاگ‌های تشخیصی موقت ---
-    const allPending = await Order.find({ status: 'pending_payment' }).select('orderNumber status createdAt');
-    console.log(`\n🔍 تعداد سفارشات pending_payment: ${allPending.length}`);
-    console.log(`🔍 cutoffDate (سفارشات قدیمی‌تر از این پاک میشن): ${cutoffDate.toISOString()}`);
-    console.log(`🔍 الان: ${new Date().toISOString()}`);
-    allPending.forEach((o) => {
-      console.log(`   - ${o.orderNumber}: status="${o.status}", createdAt=${o.createdAt.toISOString()}, قدیمی‌تر از cutoff؟ ${o.createdAt < cutoffDate}`);
-    });
-    // --- پایان لاگ‌های تشخیصی ---
+    const cutoffDate = new Date(Date.now() - ENV.PENDING_ORDER_TTL_MINUTES * 60 * 1000);
 
     const result = await Order.deleteMany({
       status: 'pending_payment',
       createdAt: { $lt: cutoffDate },
     });
 
-    if (result.deletedCount > 0) {
-      console.log(`🧹 پاک‌سازی خودکار: ${result.deletedCount} سفارش پرداخت‌نشده‌ی قدیمی حذف شد`);
-    } else {
-      console.log('🧹 هیچ سفارش واجد شرایطی برای پاک‌سازی پیدا نشد\n');
-    }
+    console.log(
+      `🧹 پاک‌سازی سفارشات معلق: ${result.deletedCount} سفارش حذف شد (قدیمی‌تر از ${ENV.PENDING_ORDER_TTL_MINUTES} دقیقه)`
+    );
   } catch (error) {
     console.error('خطا در پاک‌سازی سفارشات معلق:', error.message);
   }
 };
 
 export const startCleanupJob = () => {
-  cron.schedule('0 * * * *', cleanupPendingOrders);
-  console.log('✅ کار پاک‌سازی خودکار سفارشات معلق فعال شد');
+  cron.schedule('0 * * * *', cleanupPendingOrders, { timezone: 'Asia/Tehran' });
+  cleanupPendingOrders(); // یک‌بار هم موقع بالا آمدن سرور
+  console.log('✅ کار پاک‌سازی خودکار سفارشات معلق فعال شد (هر ۱ ساعت)');
 };

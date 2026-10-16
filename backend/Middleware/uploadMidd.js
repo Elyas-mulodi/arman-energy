@@ -2,11 +2,11 @@ import multer from 'multer';
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('فقط فایل‌های تصویری (jpg, png, webp) مجاز هستند'), false);
-  }
+  if (allowedTypes.includes(file.mimetype)) return cb(null, true);
+
+  const error = new Error('فقط فایل‌های تصویری (jpg, png, webp) مجاز هستند');
+  error.status = 400;
+  cb(error, false);
 };
 
 export const uploadCategoryImage = multer({

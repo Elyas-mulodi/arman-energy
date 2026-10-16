@@ -1,45 +1,42 @@
 import sharp from 'sharp';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+import { randomUUID } from 'crypto';
+import { UPLOAD_ROOT } from '../Config/paths.js';
+
+const ALLOWED_FOLDERS = new Set(['products', 'categories']);
 
 export const saveImage = async (fileBuffer, folder) => {
-  console.log('📁 saveImage صدا زده شد، folder:', folder);
-  console.log('📁 process.cwd():', process.cwd());
-
-  const uploadDir = path.join(process.cwd(), 'uploads', folder);
-  console.log('📁 مسیر کامل پوشه:', uploadDir);
-
-  if (!fs.existsSync(uploadDir)) {
-    console.log('📁 پوشه وجود نداشت، در حال ساخت...');
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log('📁 پوشه ساخته شد:', fs.existsSync(uploadDir));
+  if (!ALLOWED_FOLDERS.has(folder)) {
+    throw new Error('پوشه‌ی آپلود نامعتبر است');
   }
 
-  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
-  const filePath = path.join(uploadDir, fileName);
-  console.log('📁 مسیر نهایی فایل:', filePath);
+  const uploadDir = path.join(UPLOAD_ROOT, folder);
+  await fs.mkdir(uploadDir, { recursive: true });
 
-  try {
-    await sharp(fileBuffer)
-      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toFile(filePath);
-    console.log('✅ فایل با موفقیت ذخیره شد:', fs.existsSync(filePath));
-  } catch (err) {
-    console.error('❌ خطای Sharp:', err.message);
-    throw err;
-  }
+  const fileName = `${Date.now()}-${randomUUID()}.jpg`;
+
+  await sharp(fileBuffer)
+    .rotate() // جهت صحیح بر اساس EXIF
+    .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: '#ffffff' }) // PNG شفاف روی زمینه‌ی سفید، نه مشکی
+    .jpeg({ quality: 85 })
+    .toFile(path.join(uploadDir, fileName));
 
   return `/uploads/${folder}/${fileName}`;
 };
 
-export const deleteImageFile = (imageUrl) => {
+export const deleteImageFile = async (imageUrl) => {
   try {
-    const filePath = path.join(process.cwd(), imageUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    if (typeof imageUrl !== 'string' || !imageUrl.startsWith('/uploads/')) return;
+
+    const target = path.resolve(UPLOAD_ROOT, imageUrl.slice('/uploads/'.length));
+
+    // جلوگیری از path traversal (مثلا /uploads/../.env)
+    if (!target.startsWith(UPLOAD_ROOT + path.sep)) return;
+
+    await fs.unlink(target);
   } catch (error) {
-    console.error('خطا در حذف فایل تصویر:', error.message);
+    if (error.code !== 'ENOENT') console.error('خطا در حذف فایل تصویر:', error.message);
   }
 };

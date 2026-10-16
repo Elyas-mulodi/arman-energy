@@ -226,16 +226,20 @@ export const deleteProductImage = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({ message: "محصول یافت نشد" });
+      return res.status(404).json({ message: 'محصول یافت نشد' });
+    }
+
+    if (!product.images.includes(imageUrl)) {
+      return res.status(400).json({ message: 'این تصویر متعلق به این محصول نیست' });
     }
 
     product.images = product.images.filter((img) => img !== imageUrl);
     await product.save();
-    deleteImageFile(imageUrl);
+    await deleteImageFile(imageUrl);
 
-    res.status(200).json({ message: "تصویر حذف شد", images: product.images });
+    res.status(200).json({ message: 'تصویر حذف شد', images: product.images });
   } catch (error) {
-    res.status(500).json({ message: "خطا در حذف تصویر", error: error.message });
+    res.status(500).json({ message: 'خطا در حذف تصویر', error: error.message });
   }
 };
 
