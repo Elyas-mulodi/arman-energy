@@ -4,10 +4,11 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "start": "node nodemon",
     "dev": "node server.js",
-    "seed:admin": "node Scripts/seedAdmin.js",
-    "seed:data": "node scripts/seedData.js"
+    "seed:admin": "node scripts/seedAdmin.js",
+    "seed:data": "node scripts/seedData.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +17,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1108.0",
     "bcryptjs": "^3.0.3",
+    "bson": "^7.3.3",
     "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
