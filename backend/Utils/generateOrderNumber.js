@@ -1,8 +1,10 @@
+import { randomInt } from 'crypto';
+
+const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
 export const generateOrderNumber = () => {
-  const date = new Date();
-  const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(
-    date.getDate()
-  ).padStart(2, '0')}`;
-  const randomPart = Math.floor(1000 + Math.random() * 9000);
-  return `AE-${datePart}-${randomPart}`; 
+  const date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tehran' }); // 2026-10-21
+  const datePart = date.replaceAll('-', '').slice(2); // 261021
+  const randomPart = Array.from({ length: 6 }, () => ALPHABET[randomInt(ALPHABET.length)]).join('');
+  return `AE-${datePart}-${randomPart}`;
 };

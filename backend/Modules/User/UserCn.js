@@ -1,41 +1,55 @@
 import User from "./UserMd.js";
 import generateToken from "../../Utils/generateToken.js";
-import { sendSms } from "../../Utils/sendSms.js";
-import { generateOtp, hashOtp } from "../../Utils/otp.js";
-import { requestLimoOtp, verifyLimoOtp } from '../../Utils/limoOtpService.js';
-import { authCookieOptions } from '../../Utils/generateToken.js';
+import { requestLimoOtp, verifyLimoOtp } from "../../Utils/limoOtpService.js";
+import { authCookieOptions } from "../../Utils/generateToken.js";
+import { asString, normalizePhone, normalizePostalCode } from "../../Utils/validate.js";
+import { sendError } from "../../Utils/sendError.js";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// @route POST /api/users/register
 export const registerUser = async (req, res) => {
   try {
-    const { fullName, phone, email, password } = req.body;
+    const body = req.body ?? {};
+    const fullName = asString(body.fullName);
+    const phone = normalizePhone(body.phone);
+    const email = asString(body.email).toLowerCase();
+    const password = typeof body.password === "string" ? body.password : "";
 
-    if (!fullName || !phone || !password) {
-      return res.status(400).json({ message: "لطفا تمام فیلدها را پر کنید" });
+    if (fullName.length < 3 || fullName.length > 80) {
+      return res
+        .status(400)
+        .json({ message: "نام باید بین ۳ تا ۸۰ کاراکتر باشد" });
     }
-    console.log("1 - request received");
-
-    const userExists = await User.findOne({ phone });
-
-    console.log("2 - user checked");
-
-    if (userExists) {
-      return res.status(400).json({
-        message: "کاربری با این شماره موبایل قبلا ثبت شده است",
-      });
+    if (!phone) {
+      return res
+        .status(400)
+        .json({ message: "شماره موبایل نامعتبر است (مثال: 09123456789)" });
+    }
+    if (email && !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: "ایمیل نامعتبر است" });
+    }
+    // bcrypt بیشتر از ۷۲ بایت را نادیده می‌گیرد
+    if (password.length < 6 || password.length > 72) {
+      return res
+        .status(400)
+        .json({ message: "رمز عبور باید بین ۶ تا ۷۲ کاراکتر باشد" });
     }
 
+    if (await User.exists({ phone })) {
+      return res
+        .status(400)
+        .json({ message: "کاربری با این شماره موبایل قبلا ثبت شده است" });
+    }
 
     const user = await User.create({
       fullName,
       phone,
-      email,
+      ...(email && { email }),
       password,
     });
 
-
     generateToken(res, user._id, user.role);
-
 
     res.status(201).json({
       _id: user._id,
@@ -44,38 +58,26 @@ export const registerUser = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
-    console.error("REGISTER ERROR:", error);
-
-    res.status(500).json({
-      message: "خطا در ثبت‌نام کاربر",
-      error: error.message,
-    });
+    return sendError(res, error, "خطا در ثبت‌نام کاربر");
   }
 };
 
+// @route POST /api/users/login
 export const loginUser = async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const body = req.body ?? {};
+    const phone = normalizePhone(body.phone);
+    const password = typeof body.password === "string" ? body.password : "";
 
-    const cleanPhone = phone?.trim();
-
-    console.log("LOGIN ATTEMPT - raw phone:", JSON.stringify(phone));
-    console.log("LOGIN ATTEMPT - cleaned phone:", JSON.stringify(cleanPhone));
-
-    const user = await User.findOne({ phone: cleanPhone });
-
-    console.log("LOGIN ATTEMPT - user found:", !!user);
-
-    if (!user) {
+    if (!phone || !password) {
       return res
         .status(401)
         .json({ message: "شماره موبایل یا رمز عبور اشتباه است" });
     }
 
-    const isMatch = await user.matchPassword(password);
-    console.log("LOGIN ATTEMPT - password match:", isMatch);
+    const user = await User.findOne({ phone });
 
-    if (!isMatch) {
+    if (!user || !(await user.matchPassword(password))) {
       return res
         .status(401)
         .json({ message: "شماره موبایل یا رمز عبور اشتباه است" });
@@ -96,16 +98,13 @@ export const loginUser = async (req, res) => {
       role: user.role,
     });
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
-    res
-      .status(500)
-      .json({ message: "خطا در ورود کاربر", error: error.message });
+    return sendError(res, error, "خطا در ورود کاربر");
   }
 };
 
 export const logoutUser = (req, res) => {
-  res.clearCookie('token', authCookieOptions);
-  res.status(200).json({ message: 'با موفقیت خارج شدید' });
+  res.clearCookie("token", authCookieOptions);
+  res.status(200).json({ message: "با موفقیت خارج شدید" });
 };
 
 export const getUserProfile = async (req, res) => {
@@ -119,35 +118,85 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
+// @route PUT /api/users/profile
 export const updateUserProfile = async (req, res) => {
   try {
+    const body = req.body ?? {};
     const user = await User.findById(req.user._id);
 
     if (!user) {
       return res.status(404).json({ message: "کاربر یافت نشد" });
     }
 
-    user.fullName = req.body.fullName || user.fullName;
-    user.email = req.body.email || user.email;
-    user.address = req.body.address || user.address;
-
-    if (req.body.password) {
-      user.password = req.body.password;
+    if (body.fullName !== undefined) {
+      const fullName = asString(body.fullName);
+      if (fullName.length < 3 || fullName.length > 80) {
+        return res
+          .status(400)
+          .json({ message: "نام باید بین ۳ تا ۸۰ کاراکتر باشد" });
+      }
+      user.fullName = fullName;
     }
 
-    const updatedUser = await user.save();
+    if (body.email !== undefined) {
+      const email = asString(body.email).toLowerCase();
+      if (email && !EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ message: "ایمیل نامعتبر است" });
+      }
+      user.email = email || undefined;
+    }
 
-    res.status(200).json({
-      _id: updatedUser._id,
-      fullName: updatedUser.fullName,
-      phone: updatedUser.phone,
-      email: updatedUser.email,
-      role: updatedUser.role,
-    });
+    if (body.address !== undefined) {
+      const address = body.address;
+      if (!address || typeof address !== "object") {
+        return res.status(400).json({ message: "آدرس نامعتبر است" });
+      }
+
+      const postalCode = asString(address.postalCode)
+        ? normalizePostalCode(address.postalCode)
+        : "";
+      if (postalCode === null) {
+        return res.status(400).json({ message: "کد پستی باید ۱۰ رقم باشد" });
+      }
+
+      user.address = {
+        province: asString(address.province).slice(0, 50),
+        city: asString(address.city).slice(0, 50),
+        fullAddress: asString(address.fullAddress).slice(0, 500),
+        postalCode,
+      };
+    }
+
+    if (body.password !== undefined && body.password !== "") {
+      const currentPassword =
+        typeof body.currentPassword === "string" ? body.currentPassword : "";
+      const newPassword =
+        typeof body.password === "string" ? body.password : "";
+
+      if (!currentPassword) {
+        return res.status(400).json({ message: "رمز عبور فعلی را وارد کنید" });
+      }
+      // ۴۰۰ و نه ۴۰۱؛ چون اینترسپتور axios روی ۴۰۱ کاربر را به لاگین می‌فرستد
+      if (!(await user.matchPassword(currentPassword))) {
+        return res.status(400).json({ message: "رمز عبور فعلی اشتباه است" });
+      }
+      if (newPassword.length < 6 || newPassword.length > 72) {
+        return res
+          .status(400)
+          .json({ message: "رمز عبور باید بین ۶ تا ۷۲ کاراکتر باشد" });
+      }
+      user.password = newPassword;
+    }
+
+    const updated = await user.save();
+
+    // کاربر کامل (با آدرس و تاریخ عضویت) برگردد، تا استور فرانت فیلدهایش را از دست ندهد
+    const safeUser = updated.toObject();
+    delete safeUser.password;
+
+    res.status(200).json(safeUser);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "خطا در بروزرسانی اطلاعات", error: error.message });
+    return sendError(res, error, "خطا در بروزرسانی اطلاعات");
   }
 };
 
@@ -180,60 +229,69 @@ export const toggleUserStatus = async (req, res) => {
   }
 };
 
-
-// @desc    Request password reset OTP
-// @route   POST /api/users/forgot-password
+// @route POST /api/users/forgot-password
 export const forgotPassword = async (req, res) => {
   try {
-    const { phone } = req.body;
+    const phone = normalizePhone(req.body?.phone);
 
     if (!phone) {
-      return res.status(400).json({ message: 'شماره موبایل الزامی است' });
+      return res.status(400).json({ message: "شماره موبایل نامعتبر است" });
     }
 
     const user = await User.findOne({ phone });
 
-    if (!user) {
-      // به دلایل امنیتی، پیام یکسان برمی‌گردونیم حتی اگه کاربر وجود نداشته باشه
-      return res.status(200).json({ message: 'در صورت وجود حساب، کد تایید ارسال شد' });
+    // پیام یکسان، تا نشود فهمید شماره ثبت‌نام کرده یا نه
+    if (!user || !user.isActive) {
+      return res
+        .status(200)
+        .json({ message: "در صورت وجود حساب، کد تایید ارسال شد" });
     }
 
     await requestLimoOtp(phone);
 
-    res.status(200).json({ message: 'کد تایید ارسال شد' });
+    res.status(200).json({ message: "کد تایید ارسال شد" });
   } catch (error) {
-    res.status(500).json({ message: 'خطا در ارسال کد تایید', error: error.message });
+    return sendError(res, error, "خطا در ارسال کد تایید");
   }
 };
 
-// @desc    Reset password with OTP
-// @route   POST /api/users/reset-password
+// @route POST /api/users/reset-password
 export const resetPassword = async (req, res) => {
   try {
-    const { phone, otp, newPassword } = req.body;
+    const body = req.body ?? {};
+    const phone = normalizePhone(body.phone);
+    const otp = toEnglishDigits(asString(body.otp));
+    const newPassword =
+      typeof body.newPassword === "string" ? body.newPassword : "";
 
-    if (!phone || !otp || !newPassword) {
-      return res.status(400).json({ message: 'لطفا تمام فیلدها را پر کنید' });
+    if (!phone || !/^\d{4,8}$/.test(otp)) {
+      return res
+        .status(400)
+        .json({ message: "شماره موبایل یا کد تایید نامعتبر است" });
+    }
+    if (newPassword.length < 6 || newPassword.length > 72) {
+      return res
+        .status(400)
+        .json({ message: "رمز عبور باید بین ۶ تا ۷۲ کاراکتر باشد" });
     }
 
     const user = await User.findOne({ phone });
-
-    if (!user) {
-      return res.status(400).json({ message: 'درخواست نامعتبر است' });
+    if (!user || !user.isActive) {
+      return res.status(400).json({ message: "درخواست نامعتبر است" });
     }
 
-    // کد رو مستقیم از خودِ لیمو تایید می‌کنیم، نه از دیتابیس خودمون
     const isValid = await verifyLimoOtp(phone, otp);
-
     if (!isValid) {
-      return res.status(400).json({ message: 'کد تایید نامعتبر یا منقضی شده است' });
+      return res
+        .status(400)
+        .json({ message: "کد تایید نامعتبر یا منقضی شده است" });
     }
 
     user.password = newPassword;
     await user.save();
 
-    res.status(200).json({ message: 'رمز عبور با موفقیت تغییر کرد' });
+    res.status(200).json({ message: "رمز عبور با موفقیت تغییر کرد" });
   } catch (error) {
-    res.status(500).json({ message: 'خطا در تغییر رمز عبور', error: error.message });
+    return sendError(res, error, "خطا در تغییر رمز عبور");
   }
 };

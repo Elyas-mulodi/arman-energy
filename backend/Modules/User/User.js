@@ -11,11 +11,11 @@ import {
   resetPassword,
 } from './UserCn.js';
 import { verifyToken, isAdmin } from '../../Middleware/authMidd.js';
-import { loginLimiter, otpLimiter } from '../../Middleware/rateLimitMidd.js';
+import { loginLimiter, otpLimiter, registerLimiter, resetLimiter } from '../../Middleware/rateLimitMidd.js';
 
 const router = express.Router();
 
-router.post('/register', registerUser);
+router.post('/register',registerLimiter, registerUser);
 router.post('/login',loginLimiter, loginUser);
 router.post('/logout', logoutUser);
 
@@ -26,6 +26,6 @@ router.get('/', verifyToken, isAdmin, getAllUsers);
 router.put('/:id/toggle-status', verifyToken, isAdmin, toggleUserStatus);
 
 router.post('/forgot-password',otpLimiter, forgotPassword);
-router.post('/reset-password', resetPassword);
+router.post('/reset-password',resetLimiter, resetPassword);
 
 export default router;
