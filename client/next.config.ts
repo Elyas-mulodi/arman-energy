@@ -4,6 +4,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const api = new URL(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api');
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   poweredByHeader: false,
   images: {
     dangerouslyAllowLocalIP: isDev,

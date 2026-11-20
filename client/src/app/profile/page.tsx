@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import ProfileHeader from '@/components/profile/ProfileHeader';
@@ -10,7 +10,15 @@ import AddressForm from '@/components/profile/AddressForm';
 import PasswordChangeForm from '@/components/profile/PasswordChangeForm';
 import OrderHistoryList from '@/components/profile/OrderHistoryList';
 
-export default function ProfilePage() {
+function ProfileSkeleton() {
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      <div className="h-40 animate-pulse rounded-md bg-ink-100" />
+    </div>
+  );
+}
+
+function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'info';
@@ -25,11 +33,7 @@ export default function ProfilePage() {
   }, [isInitialized, user, router]);
 
   if (!isInitialized || !user) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="h-40 animate-pulse rounded-md bg-ink-100" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (
@@ -47,5 +51,13 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <ProfileContent />
+    </Suspense>
   );
 }

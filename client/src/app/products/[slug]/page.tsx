@@ -39,25 +39,33 @@ export default async function ProductPage({ params }: Props) {
 
   if (!product) notFound();
 
-  
+  const category =
+    typeof product.category === 'string' ? null : product.category;
+  const categoryId =
+    typeof product.category === 'string' ? product.category : product.category._id;
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Breadcrumb
         items={[
           { label: 'محصولات', href: '/products' },
-          { label: product.category._id, href: `/products?category=${product.category.slug}` },
+          ...(category
+            ? [{ label: category.name, href: `/products?category=${category.slug}` }]
+            : []),
           { label: product.name },
         ]}
       />
 
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-        <ProductGallery images={product.images} alt={product.name} />
+        <ProductGallery images={product.images} name={product.name} />
 
         <div>
           <h1 className="mb-1 text-2xl font-black text-ink-900">{product.name}</h1>
-          <p className="mb-6 text-xs text-ink-800/40">
-            کد دسته‌بندی: <span dir="ltr">{product.category.slug}</span>
-          </p>
+          {category && (
+            <p className="mb-6 text-xs text-ink-800/40">
+              کد دسته‌بندی: <span dir="ltr">{category.slug}</span>
+            </p>
+          )}
 
           <AddToCartPanel product={product} />
 
@@ -76,7 +84,7 @@ export default async function ProductPage({ params }: Props) {
         </div>
       )}
 
-      <RelatedProducts categoryId={product.category._id} excludeId={product._id} />
+      <RelatedProducts categoryId={categoryId} excludeId={product._id} />
     </div>
   );
 }

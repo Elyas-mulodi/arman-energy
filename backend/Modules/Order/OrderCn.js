@@ -436,3 +436,15 @@ export const updateOrderStatus = async (req, res) => {
       .json({ message: "خطا در بروزرسانی وضعیت سفارش", error: error.message });
   }
 };
+
+export const getMyOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id }).sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json(orders);
+  } catch (error) {
+    return sendError(res, error, "خطا در دریافت سفارشات");
+  }
+};

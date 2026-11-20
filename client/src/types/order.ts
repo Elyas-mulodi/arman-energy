@@ -29,7 +29,7 @@ export interface OrderItem {
 export interface Order {
   _id: string;
   orderNumber: string;
-  user: string;
+  user: string | OrderUserInfo;  
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   itemsTotal: number;
@@ -55,6 +55,7 @@ export interface OrderUserInfo {
   _id: string;
   fullName: string;
   phone: string;
+  user: string | OrderUserInfo;
 }
 
 export interface OrderListResponse {
