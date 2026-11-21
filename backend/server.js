@@ -8,7 +8,7 @@ import { startBackupJob } from './jobs/dailyBackup.js';
 const start = async () => {
   await connectDB();
   startCleanupJob();
-  startBackupJob();
+  // startBackupJob();
   const server = app.listen(ENV.PORT, () => {
     console.log(`Server running on port ${ENV.PORT} in ${ENV.NODE_ENV} mode`);
   });
